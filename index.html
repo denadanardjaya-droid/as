@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>After-Sales PT3D</title>
+<style>
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:#F4F6F8;color:#1B2733;display:flex;min-height:100vh;align-items:center;justify-content:center}
+  .card{background:#fff;border:1px solid #D9E0E6;border-radius:14px;padding:28px 24px;margin:20px;max-width:380px;width:100%;text-align:center}
+  .brand{font-weight:700;letter-spacing:.04em;color:#0B5C8A;font-size:14px}
+  h1{font-size:20px;margin:14px 0 6px}
+  .kode{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:26px;font-weight:700;margin:14px 0;padding:12px;border-radius:10px;background:#EEF4F8}
+  p{color:#52616F;font-size:15px;line-height:1.5;margin:8px 0}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="brand">PT DENA DANAR DJAYA</div>
+  <h1>Layanan After-Sales</h1>
+  <div id="isi"></div>
+</div>
+<script>
+// Halaman sementara. Akan diganti aplikasi work order ber-login.
+// Alamat stiker QR: .../?u=KODE  (contoh ?u=3D-00001)
+(function(){
+  var u=(new URLSearchParams(location.search).get("u")||"").trim().toUpperCase();
+  var ok=/^3D-\d{5}$/.test(u), el=document.getElementById("isi");
+  if(ok){
+    var k=document.createElement("div");k.className="kode";k.textContent=u;el.appendChild(k);
+    var p=document.createElement("p");p.textContent="Kode alat terbaca. Sistem pencatatan sedang disiapkan; riwayat alat ini akan tampil di sini setelah login petugas PT3D.";el.appendChild(p);
+  }else{
+    var q=document.createElement("p");q.textContent="Sistem pencatatan servis sedang disiapkan. Halaman ini khusus petugas PT3D.";el.appendChild(q);
+  }
+})();
+</script>
+</body>
+</html>
