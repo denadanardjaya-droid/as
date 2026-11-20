@@ -45,6 +45,12 @@ td.n,th.n{text-align:right}
 .uji{background:#FFF4CE;color:#6B4E00;border-bottom:1px solid #E8C96A;padding:8px 14px;font-size:13px;font-weight:600;text-align:center}
 .bar{height:10px;background:#E3E9EE;border-radius:99px;overflow:hidden;margin:8px 0}
 .bar i{display:block;height:100%;background:var(--ok)}
+.th{border-top:1px solid var(--line);padding:12px 0}
+.th:first-of-type{border-top:0}
+.th .nm{font-weight:600}
+.th.ok .nm{color:var(--ok)}
+.th .btn{margin-top:8px;padding:11px}
+.lnk{background:none;border:0;color:var(--pri);font-size:14px;padding:6px 0;text-decoration:underline}
 pre{white-space:pre-wrap;font-family:inherit;font-size:14px;background:var(--chip);border-radius:10px;padding:10px;margin:8px 0}
 </style>
 </head>
@@ -55,7 +61,7 @@ pre{white-space:pre-wrap;font-family:inherit;font-size:14px;background:var(--chi
 <script>
 "use strict";
 // ---------------------------------------------------------------------
-// PT3D After-Sales - registrasi stiker QR + progres instalasi (v2, 20 Nov 2026)
+// PT3D After-Sales - registrasi stiker QR, progres, tahapan work order (v3, 20 Nov 2026)
 // Kunci di bawah adalah kunci PUBLIK (publishable). Keamanan data dijaga
 // oleh login dan aturan akses (RLS) di database, bukan oleh kunci ini.
 // ---------------------------------------------------------------------
@@ -79,7 +85,7 @@ function pesanGalat(e){
   const m=(e&&(e.message||e.error_description))||String(e||"");
   if(/alat_kode_qr_unik/.test(m))return "Stiker ini sudah terdaftar pada alat lain. Muat ulang halaman untuk melihatnya.";
   if(/alat_merk_tipe_sn_unik/.test(m))return "Nomor seri ini sudah dipakai alat lain dengan merk dan tipe yang sama. Periksa lagi nomor serinya.";
-  if(/sudah terdaftar pada alat ini/.test(m))return m;
+  if(/sudah terdaftar pada alat ini|wajib diberi catatan|boleh membatalkan tahapan|sudah ditutup/.test(m))return m;
   if(/row-level security|permission denied/i.test(m))return "Akun ini tidak punya izin untuk tindakan tersebut.";
   if(/Failed to fetch|NetworkError|Load failed/i.test(m))return "Tidak ada sambungan internet. Data BELUM tersimpan, coba lagi setelah sinyal ada.";
   return "Gagal: "+m;
@@ -110,7 +116,7 @@ async function sesudahLogin(user){
   try{
     const r=await sb.from("pengguna").select("nama,peran,aktif").eq("id",user.id).maybeSingle();
     if(r.error)throw r.error;
-    me=r.data&&r.data.aktif?r.data:null;
+    me=r.data&&r.data.aktif?Object.assign({id:user.id},r.data):null;
     if(!me){tombolAtas(false);$("#out").hidden=false;
       v.innerHTML='<div class="card"><b>Akun belum diberi akses</b><p class="mut">Email '+esc(user.email)+' berhasil login, tetapi belum terdaftar sebagai pengguna aktif. Hubungi manajemen PT3D.</p></div>';return}
     const c=await sb.from("customer").select("id,nama").order("nama");
@@ -197,13 +203,77 @@ async function muatProgres(){
         '<div class="bar"><i style="width:'+pct+'%"></i></div>'+
         '<div><b>'+n+'</b>'+(t?' dari '+t+' unit teregister ('+pct+'%)':' unit teregister')+'</div>'+
         (p.per_lokasi.length?'<div class="mut">'+p.per_lokasi.map(x=>esc(x.lokasi)+": "+x.n).join(" · ")+'</div>':'')+
-        '<button class="btn s" data-salin="'+i+'">Salin ringkasan untuk WA</button><div class="okb" id="ok'+i+'" hidden></div><pre id="tx'+i+'" hidden></pre></div>'}).join("");
+        '<button class="btn" data-wo="'+esc(p.nomor)+'">Buka work order dan tahapan</button><button class="btn s" data-salin="'+i+'">Salin ringkasan untuk WA</button><div class="okb" id="ok'+i+'" hidden></div><pre id="tx'+i+'" hidden></pre></div>'}).join("");
+    el.querySelectorAll("[data-wo]").forEach(b=>b.onclick=()=>layarWO(b.dataset.wo));
     el.querySelectorAll("[data-salin]").forEach(b=>b.onclick=async()=>{
       const i=b.dataset.salin,tx=teksProgres(P[i]),pre=$("#tx"+i),ok=$("#ok"+i);pre.textContent=tx;pre.hidden=false;ok.hidden=false;
       try{await navigator.clipboard.writeText(tx);ok.textContent="Tersalin. Buka WhatsApp lalu tempel di grup."}
       catch(e){try{const g=document.createRange();g.selectNodeContents(pre);const sel=getSelection();sel.removeAllRanges();sel.addRange(g)}catch(_){}ok.textContent="Teks sudah diblok di bawah; tekan lama lalu pilih Salin."}
     });
   }catch(e){el.innerHTML='<div class="err">'+esc(pesanGalat(e))+'</div>'}
+}
+
+// ---------- work order: rincian dan tahapan ---------------------------
+let ORANG=null;
+const tglJam=d=>d?new Date(d).toLocaleString("id-ID",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit",timeZone:"Asia/Jakarta"})+" WIB":"-";
+async function namaOrang(id){
+  if(!ORANG){const r=await sb.from("pengguna").select("id,nama");ORANG=r.error?[]:(r.data||[])}
+  return (ORANG.find(o=>o.id===id)||{}).nama||"petugas";
+}
+async function layarWO(nomor,pesan){
+  judul(nomor);v.innerHTML='<p class="mut">Memuat '+esc(nomor)+'...</p>';window.scrollTo(0,0);
+  try{
+    const r=await sb.from("work_order").select("id,nomor,customer_id,jenis,fase,status,cerita,tgl_kunjungan,target_unit,dibuat_oleh").eq("nomor",nomor).maybeSingle();
+    if(r.error)throw r.error;if(!r.data)throw new Error("Work order "+nomor+" tidak ditemukan.");
+    const w=r.data,t=await sb.from("wo_tahap").select("id,urut,lokasi,nama,perlu_catatan,selesai_pada,selesai_oleh,catatan").eq("wo_id",w.id).order("urut");
+    if(t.error)throw t.error;const TH=t.data||[];
+    await namaOrang(null);
+    const selesai=TH.filter(x=>x.selesai_pada).length,kunci=w.status==="Ditutup";
+    let h=(pesan?'<div class="okb">'+esc(pesan)+'</div>':'')+
+      '<div class="card"><b>'+esc(rsNama(w.customer_id))+'</b><div class="kv" style="margin-top:8px">'+
+      '<span>Pekerjaan</span><span>'+esc((w.jenis||[]).join(", "))+'</span>'+
+      '<span>Fase</span><span>'+esc(w.fase||"-")+'</span>'+
+      '<span>Status</span><span>'+esc(w.status)+'</span>'+
+      '<span>Teknisi</span><span>'+esc(await namaOrang(w.dibuat_oleh))+'</span>'+
+      (w.target_unit?'<span>Target</span><span>'+w.target_unit+' unit</span>':'')+
+      '<span>Keterangan</span><span>'+esc(w.cerita||"-")+'</span></div></div>'+
+      '<h2>Tahapan ('+selesai+' dari '+TH.length+' selesai)</h2>';
+    if(!TH.length)h+='<div class="card"><p class="mut">Work order ini belum punya tahapan.</p></div>';
+    let lok="";
+    for(const x of TH){
+      if(x.lokasi!==lok){if(lok)h+='</div>';lok=x.lokasi;h+='<div class="card"><div class="mut" style="font-weight:600">'+esc(lok)+'</div>'}
+      if(x.selesai_pada){
+        const boleh=!kunci&&(x.selesai_oleh===me.id||me.peran==="operasi"||me.peran==="manajemen");
+        h+='<div class="th ok"><div class="nm">&#10003; '+esc(x.nama)+'</div><div class="mut">'+esc(await namaOrang(x.selesai_oleh))+', '+tglJam(x.selesai_pada)+'</div>'+
+           (x.catatan?'<div>'+esc(x.catatan)+'</div>':'')+(boleh?'<button class="lnk" data-batal="'+x.id+'">Batalkan tanda selesai</button>':'')+'</div>';
+      }else{
+        h+='<div class="th"><div class="nm">'+esc(x.nama)+'</div>'+
+           (kunci?'<div class="mut">Belum ditandai.</div>':
+           (x.perlu_catatan?'<input type="text" id="ct'+x.id+'" placeholder="Catatan wajib: hasil, jumlah, atau kendala" style="margin-top:8px">':'')+
+           '<div class="err" id="er'+x.id+'"></div><button class="btn s" data-tandai="'+x.id+'">Tandai selesai</button>')+'</div>';
+      }
+    }
+    if(lok)h+='</div>';
+    h+='<button class="btn s" id="kembali">Kembali ke Beranda</button>';
+    v.innerHTML=h;
+    $("#kembali").onclick=()=>layarBeranda();
+    v.querySelectorAll("[data-tandai]").forEach(b=>b.onclick=async()=>{
+      const x=TH.find(y=>String(y.id)===b.dataset.tandai),E=$("#er"+x.id),inp=$("#ct"+x.id),cat=inp?inp.value.trim():"";
+      if(x.perlu_catatan&&!cat){E.textContent="Tahapan ini wajib diberi catatan.";return}
+      b.disabled=true;b.textContent="Menyimpan...";
+      try{const isi={selesai_pada:new Date().toISOString()};if(cat)isi.catatan=cat;
+        const u=await sb.from("wo_tahap").update(isi).eq("id",x.id).is("selesai_pada",null).select("id").maybeSingle();
+        if(u.error)throw u.error;
+        await layarWO(nomor,u.data?'Tahapan "'+x.nama+'" ditandai selesai.':'Tahapan ini sudah ditandai orang lain.');
+      }catch(e){E.textContent=pesanGalat(e);b.disabled=false;b.textContent="Tandai selesai"}
+    });
+    v.querySelectorAll("[data-batal]").forEach(b=>b.onclick=async()=>{
+      b.disabled=true;
+      try{const u=await sb.from("wo_tahap").update({selesai_pada:null}).eq("id",Number(b.dataset.batal)).select("id").maybeSingle();
+        if(u.error)throw u.error;await layarWO(nomor,"Tanda selesai dibatalkan.");
+      }catch(e){b.disabled=false;b.insertAdjacentHTML("afterend",'<div class="err">'+esc(pesanGalat(e))+'</div>')}
+    });
+  }catch(e){v.innerHTML='<div class="err">'+esc(pesanGalat(e))+'</div><button class="btn s" id="kembali">Kembali ke Beranda</button>';$("#kembali").onclick=()=>layarBeranda()}
 }
 
 // ---------- stiker sudah terdaftar: lihat dan ubah lokasi -------------
