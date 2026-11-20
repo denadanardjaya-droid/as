@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>After-Sales PT3D</title>
+<style>
+:root{--ink:#1B2733;--mut:#5B6875;--line:#D9E0E6;--bg:#F4F6F8;--pri:#0B5C8A;--pri2:#084A70;--ok:#1E7B4A;--okbg:#E6F4EC;--red:#B42318;--redbg:#FDECEA;--chip:#EEF4F8}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:16px;line-height:1.45}
+header{background:var(--pri);color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;position:sticky;top:0;z-index:5}
+header b{font-size:16px}
+header button{background:rgba(255,255,255,.16);color:#fff;border:0;border-radius:8px;padding:7px 10px;font-size:13px}
+main{max-width:560px;margin:0 auto;padding:14px 14px 60px}
+h1{font-size:19px;margin:6px 0 10px}
+h2{font-size:14px;margin:18px 0 6px;color:var(--mut);text-transform:uppercase;letter-spacing:.04em}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;margin:10px 0}
+.kode{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:24px;font-weight:700;background:var(--chip);border-radius:10px;padding:10px;text-align:center;margin:4px 0 10px}
+label{display:block;font-size:14px;font-weight:600;margin:12px 0 5px}
+input[type=text],input[type=email],input[type=password],input[type=date],input[type=search],select{width:100%;padding:12px;border:1px solid #B9C4CE;border-radius:10px;font-size:16px;background:#fff;color:var(--ink)}
+.btn{display:block;width:100%;padding:14px;border:0;border-radius:10px;background:var(--pri);color:#fff;font-size:16px;font-weight:600;margin-top:14px}
+.btn:active{background:var(--pri2)}
+.btn.s{background:#fff;color:var(--pri);border:1px solid var(--pri)}
+.btn[disabled]{opacity:.55}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid #B9C4CE;background:#fff;border-radius:999px;padding:9px 14px;font-size:15px;color:var(--ink)}
+.chip.on{background:var(--pri);border-color:var(--pri);color:#fff}
+.item{display:block;width:100%;text-align:left;background:#fff;border:1px solid var(--line);border-radius:10px;padding:11px 12px;margin:6px 0;font-size:15px;color:var(--ink)}
+.item b{display:block}
+.item span{color:var(--mut);font-size:13px}
+.mut{color:var(--mut);font-size:14px}
+.err{color:var(--red);background:var(--redbg);border-radius:8px;padding:10px;margin-top:10px;font-size:14px}
+.err:empty{display:none}
+.okb{color:var(--ok);background:var(--okbg);border-radius:10px;padding:12px;font-weight:600}
+.kv{display:grid;grid-template-columns:110px 1fr;gap:6px 10px;font-size:15px}
+.kv span:nth-child(odd){color:var(--mut)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+td,th{padding:7px 4px;border-bottom:1px solid var(--line);text-align:left}
+td.n,th.n{text-align:right}
+.row{display:flex;gap:8px}
+.row>*{flex:1}
+.check{display:flex;align-items:center;gap:10px;margin-top:14px;font-size:15px}
+.check input{width:22px;height:22px}
+.uji{background:#FFF4CE;color:#6B4E00;border-bottom:1px solid #E8C96A;padding:8px 14px;font-size:13px;font-weight:600;text-align:center}
+.bar{height:10px;background:#E3E9EE;border-radius:99px;overflow:hidden;margin:8px 0}
+.bar i{display:block;height:100%;background:var(--ok)}
+pre{white-space:pre-wrap;font-family:inherit;font-size:14px;background:var(--chip);border-radius:10px;padding:10px;margin:8px 0}
+</style>
+</head>
+<body>
+<header><b id="ttl">After-Sales PT3D</b><span><button id="home" hidden>Beranda</button> <button id="out" hidden>Keluar</button></span></header>
+<div class="uji" id="uji" hidden>VERSI UJI. Pakai "RS UJI (percobaan)" dan kode stiker 99001 ke atas.</div>
+<main id="v"><p class="mut">Memuat...</p></main>
+<script>
+"use strict";
+// ---------------------------------------------------------------------
+// PT3D After-Sales - registrasi stiker QR + progres instalasi (v2, 20 Nov 2026)
+// Kunci di bawah adalah kunci PUBLIK (publishable). Keamanan data dijaga
+// oleh login dan aturan akses (RLS) di database, bukan oleh kunci ini.
+// ---------------------------------------------------------------------
+const SB_URL="https://bvguqlqpiyyzoakpoloc.supabase.co";
+const SB_KEY="sb_publishable_AXbdfnJXpgH7a-bqZ9hO8g_0S-Hi2hj";
+const KOLOM="id,customer_id,nama,merk,tipe,sn,departemen,ruangan,menetap,status,tgl_instal,kode_qr,catatan,didaftar_pada";
+const $=s=>document.querySelector(s), v=$("#v");
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const hariIni=()=>new Date().toLocaleDateString("en-CA",{timeZone:"Asia/Jakarta"});
+const tgl=d=>d?new Date(d).toLocaleDateString("id-ID",{day:"numeric",month:"short",year:"numeric",timeZone:"Asia/Jakarta"}):"-";
+const ls={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,x)=>{try{localStorage.setItem(k,x)}catch(e){}}};
+const normKode=s=>{s=String(s||"").trim().toUpperCase();const m=s.match(/(?:3D-?)?(\d{1,5})$/);return m?"3D-"+m[1].padStart(5,"0"):""};
+const kodeSah=k=>/^3D-\d{5}$/.test(k);
+let sb=null,me=null,RS=[],kode="";
+const UJI=/\/uji(\/|$)/.test(location.pathname);
+const rsUji=n=>/^RS UJI/i.test(n||"");
+const rsNama=id=>(RS.find(r=>r.id==id)||{}).nama||"-";
+const alatTxt=a=>[a.nama,a.merk,a.tipe].filter(Boolean).join(" ");
+
+function pesanGalat(e){
+  const m=(e&&(e.message||e.error_description))||String(e||"");
+  if(/alat_kode_qr_unik/.test(m))return "Stiker ini sudah terdaftar pada alat lain. Muat ulang halaman untuk melihatnya.";
+  if(/alat_merk_tipe_sn_unik/.test(m))return "Nomor seri ini sudah dipakai alat lain dengan merk dan tipe yang sama. Periksa lagi nomor serinya.";
+  if(/sudah terdaftar pada alat ini/.test(m))return m;
+  if(/row-level security|permission denied/i.test(m))return "Akun ini tidak punya izin untuk tindakan tersebut.";
+  if(/Failed to fetch|NetworkError|Load failed/i.test(m))return "Tidak ada sambungan internet. Data BELUM tersimpan, coba lagi setelah sinyal ada.";
+  return "Gagal: "+m;
+}
+function judul(t){$("#ttl").textContent=t}
+function tombolAtas(on){$("#out").hidden=!on;$("#home").hidden=!on}
+
+// Pustaka Supabase dimuat dari CDN (versi dikunci), dengan dua cadangan.
+const PUSTAKA=["https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.2/dist/umd/supabase.js",
+               "https://unpkg.com/@supabase/supabase-js@2.119.2/dist/umd/supabase.js","supabase.js"];
+const muatSkrip=src=>new Promise((ok,no)=>{const s=document.createElement("script");s.src=src;s.onload=ok;s.onerror=no;document.head.appendChild(s)});
+async function mulai(){
+  for(const src of PUSTAKA){if(window.supabase)break;try{await muatSkrip(src)}catch(e){}}
+  if(!window.supabase){v.innerHTML='<div class="err">Aplikasi gagal dimuat karena sambungan internet. Periksa sinyal lalu muat ulang halaman.</div><button class="btn s" onclick="location.reload()">Muat ulang</button>';return}
+  sb=window.supabase.createClient(SB_URL,SB_KEY);
+  $("#uji").hidden=!UJI;
+  kode=normKode(new URLSearchParams(location.search).get("u"));
+  if(!kodeSah(kode))kode="";
+  $("#out").onclick=async()=>{await sb.auth.signOut();me=null;layarLogin()};
+  $("#home").onclick=()=>{location.href=location.pathname};
+  let ses=null;
+  try{ses=(await sb.auth.getSession()).data.session}catch(e){}
+  if(!ses)return layarLogin();
+  await sesudahLogin(ses.user);
+}
+async function sesudahLogin(user){
+  v.innerHTML='<p class="mut">Memuat...</p>';
+  try{
+    const r=await sb.from("pengguna").select("nama,peran,aktif").eq("id",user.id).maybeSingle();
+    if(r.error)throw r.error;
+    me=r.data&&r.data.aktif?r.data:null;
+    if(!me){tombolAtas(false);$("#out").hidden=false;
+      v.innerHTML='<div class="card"><b>Akun belum diberi akses</b><p class="mut">Email '+esc(user.email)+' berhasil login, tetapi belum terdaftar sebagai pengguna aktif. Hubungi manajemen PT3D.</p></div>';return}
+    const c=await sb.from("customer").select("id,nama").order("nama");
+    if(c.error)throw c.error;RS=(c.data||[]).filter(r=>UJI||!rsUji(r.nama));
+    if(UJI)RS.sort((a,b)=>rsUji(b.nama)-rsUji(a.nama));
+    tombolAtas(true);
+    if(kode)await bukaKode(kode);else await layarBeranda();
+  }catch(e){v.innerHTML='<div class="err">'+esc(pesanGalat(e))+'</div><button class="btn s" onclick="location.reload()">Coba lagi</button>'}
+}
+
+function layarLogin(){
+  tombolAtas(false);judul("After-Sales PT3D");
+  v.innerHTML=(kode?'<div class="kode">'+esc(kode)+'</div>':'')+
+   '<div class="card"><h1>Masuk</h1><p class="mut">Khusus petugas PT Dena Danar Djaya.</p>'+
+   '<label for="em">Email</label><input type="email" id="em" autocomplete="username" inputmode="email">'+
+   '<label for="pw">Kata sandi</label><input type="password" id="pw" autocomplete="current-password">'+
+   '<div class="err" id="err"></div><button class="btn" id="go">Masuk</button></div>';
+  $("#em").value=ls.get("pt3d_email")||"";
+  const masuk=async()=>{
+    const em=$("#em").value.trim(),pw=$("#pw").value;
+    if(!em||!pw){$("#err").textContent="Isi email dan kata sandi.";return}
+    $("#go").disabled=true;$("#err").textContent="";
+    try{const r=await sb.auth.signInWithPassword({email:em,password:pw});
+      if(r.error){$("#err").textContent=/Invalid login/i.test(r.error.message)?"Email atau kata sandi salah.":pesanGalat(r.error);$("#go").disabled=false;return}
+      ls.set("pt3d_email",em);await sesudahLogin(r.data.user);
+    }catch(e){$("#err").textContent=pesanGalat(e);$("#go").disabled=false}
+  };
+  $("#go").onclick=masuk;$("#pw").onkeydown=e=>{if(e.key==="Enter")masuk()};
+}
+
+async function hitung(cid,berstiker){
+  let q=sb.from("alat").select("id",{count:"exact",head:true}).eq("customer_id",cid);
+  if(berstiker)q=q.not("kode_qr","is",null);
+  const r=await q;if(r.error)throw r.error;return r.count||0;
+}
+async function layarBeranda(){
+  judul("After-Sales PT3D");
+  v.innerHTML='<p class="mut">Halo, '+esc(me.nama)+' ('+esc(me.peran)+').</p>'+
+   '<div class="card"><h1>Daftarkan stiker</h1><p class="mut">Cara tercepat: pindai stiker dengan kamera HP, halaman ini terbuka sendiri dengan kodenya. Atau ketik angka di stiker:</p>'+
+   '<label for="kd">Kode stiker</label><div class="row"><input type="text" id="kd" inputmode="numeric" placeholder="contoh: 15 atau 3D-00015"></div>'+
+   '<div class="err" id="err"></div><button class="btn" id="buka">Buka</button></div>'+
+   '<h2>Progres instalasi</h2><div id="pwo"><p class="mut">Memuat...</p></div>'+
+   '<h2>Stiker per rumah sakit</h2><div class="card" id="prog"><p class="mut">Menghitung...</p></div>';
+  muatProgres();
+  const buka=()=>{const k=normKode($("#kd").value);if(!kodeSah(k)){$("#err").textContent="Kode tidak dikenali. Ketik angka pada stiker, misalnya 15.";return}location.href=location.pathname+"?u="+k};
+  $("#buka").onclick=buka;$("#kd").onkeydown=e=>{if(e.key==="Enter")buka()};
+  try{
+    let h='<table><tr><th>Rumah sakit</th><th class="n">Unit</th><th class="n">Berstiker</th></tr>',T=0,S=0;
+    for(const r of RS){const t=await hitung(r.id,false),s=await hitung(r.id,true);T+=t;S+=s;h+='<tr><td>'+esc(r.nama)+'</td><td class="n">'+t+'</td><td class="n">'+s+'</td></tr>'}
+    h+='<tr><th>Total</th><th class="n">'+T+'</th><th class="n">'+S+'</th></tr></table>';
+    $("#prog").innerHTML=h;
+  }catch(e){$("#prog").innerHTML='<div class="err">'+esc(pesanGalat(e))+'</div>'}
+}
+
+async function bukaKode(k){
+  judul(k);v.innerHTML='<p class="mut">Mencari '+esc(k)+'...</p>';
+  const r=await sb.from("alat").select(KOLOM).eq("kode_qr",k).maybeSingle();
+  if(r.error)throw r.error;
+  if(r.data)layarAlat(r.data,"");else await layarDaftar(k);
+}
+
+// ---------- progres work order instalasi ------------------------------
+const tglPendek=d=>new Date(d+"T00:00:00+07:00").toLocaleDateString("id-ID",{weekday:"short",day:"numeric",month:"short",timeZone:"Asia/Jakarta"});
+function teksProgres(p){
+  const t=p.target||0,n=p.terdaftar||0,pct=t?Math.round(n*100/t):null,hi=hariIni();
+  const hariIniN=(p.per_hari.find(h=>h.tgl===hi)||{n:0}).n;
+  let s="*Progres instalasi "+p.nomor+"*\n"+p.rs+"\n"+
+    "Teregister: "+n+(t?" dari "+t+" unit ("+pct+"%)":" unit")+"\n"+(t?"Sisa: "+Math.max(t-n,0)+" unit\n":"")+
+    "Hari ini: "+hariIniN+" unit\n";
+  if(p.per_hari.length)s+="\nPer hari:\n"+p.per_hari.map(h=>"- "+tglPendek(h.tgl)+": "+h.n).join("\n")+"\n";
+  if(p.per_tipe.length)s+="\nPer tipe:\n"+p.per_tipe.map(x=>"- "+x.tipe+": "+x.n).join("\n")+"\n";
+  if(p.per_lokasi.length)s+="\nPer departemen:\n"+p.per_lokasi.map(x=>"- "+x.lokasi+": "+x.n).join("\n")+"\n";
+  s+="\nCatatan: angka ini menghitung unit yang sudah ditempel stiker dan diregister.\nPer "+new Date().toLocaleString("id-ID",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit",timeZone:"Asia/Jakarta"})+" WIB";
+  return s;
+}
+async function muatProgres(){
+  const el=$("#pwo");if(!el)return;
+  try{
+    const r=await sb.rpc("progres_instalasi");if(r.error)throw r.error;
+    const P=(r.data||[]).filter(p=>UJI||!rsUji(p.rs));
+    if(!P.length){el.innerHTML='<div class="card"><p class="mut">Tidak ada work order instalasi yang sedang berjalan.</p></div>';return}
+    el.innerHTML=P.map((p,i)=>{const t=p.target||0,n=p.terdaftar||0,pct=t?Math.min(100,Math.round(n*100/t)):0;
+      return '<div class="card"><b>'+esc(p.nomor)+'</b> <span class="mut">'+esc(p.rs)+'</span>'+
+        '<div class="bar"><i style="width:'+pct+'%"></i></div>'+
+        '<div><b>'+n+'</b>'+(t?' dari '+t+' unit teregister ('+pct+'%)':' unit teregister')+'</div>'+
+        (p.per_lokasi.length?'<div class="mut">'+p.per_lokasi.map(x=>esc(x.lokasi)+": "+x.n).join(" · ")+'</div>':'')+
+        '<button class="btn s" data-salin="'+i+'">Salin ringkasan untuk WA</button><div class="okb" id="ok'+i+'" hidden></div><pre id="tx'+i+'" hidden></pre></div>'}).join("");
+    el.querySelectorAll("[data-salin]").forEach(b=>b.onclick=async()=>{
+      const i=b.dataset.salin,tx=teksProgres(P[i]),pre=$("#tx"+i),ok=$("#ok"+i);pre.textContent=tx;pre.hidden=false;ok.hidden=false;
+      try{await navigator.clipboard.writeText(tx);ok.textContent="Tersalin. Buka WhatsApp lalu tempel di grup."}
+      catch(e){try{const g=document.createRange();g.selectNodeContents(pre);const sel=getSelection();sel.removeAllRanges();sel.addRange(g)}catch(_){}ok.textContent="Teks sudah diblok di bawah; tekan lama lalu pilih Salin."}
+    });
+  }catch(e){el.innerHTML='<div class="err">'+esc(pesanGalat(e))+'</div>'}
+}
+
+// ---------- stiker sudah terdaftar: lihat dan ubah lokasi -------------
+function layarAlat(a,pesan){
+  judul(a.kode_qr);
+  v.innerHTML=(pesan?'<div class="okb">'+esc(pesan)+'</div>':'')+
+   '<div class="card"><div class="kode">'+esc(a.kode_qr)+'</div><div class="kv">'+
+   '<span>Alat</span><span><b>'+esc(alatTxt(a))+'</b></span>'+
+   '<span>Nomor seri</span><span>'+esc(a.sn||"belum diisi")+'</span>'+
+   '<span>Rumah sakit</span><span>'+esc(rsNama(a.customer_id))+'</span>'+
+   '<span>Departemen</span><span>'+esc(a.departemen||"-")+'</span>'+
+   '<span>Ruangan</span><span>'+esc(a.ruangan||"-")+'</span>'+
+   '<span>Penempatan</span><span>'+(a.menetap==null?"-":a.menetap?"Menetap":"Mobile")+'</span>'+
+   '<span>Status</span><span>'+esc(a.status)+'</span>'+
+   '<span>Tgl instal</span><span>'+tgl(a.tgl_instal)+'</span>'+
+   '<span>Stiker dipasang</span><span>'+tgl(a.didaftar_pada)+'</span></div></div>'+
+   '<button class="btn s" id="ubah">Ubah lokasi atau nomor seri</button>'+
+   '<h2>Stiker berikutnya</h2><div class="card"><p class="mut">Pindai stiker berikutnya dengan kamera HP, atau ketik angkanya:</p>'+
+   '<div class="row"><input type="text" id="kd" inputmode="numeric" placeholder="angka stiker"><button class="btn" id="buka" style="margin:0;flex:0 0 90px">Buka</button></div><div class="err" id="err"></div></div>';
+  const buka=()=>{const k=normKode($("#kd").value);if(!kodeSah(k)){$("#err").textContent="Kode tidak dikenali.";return}location.href=location.pathname+"?u="+k};
+  $("#buka").onclick=buka;$("#kd").onkeydown=e=>{if(e.key==="Enter")buka()};
+  $("#ubah").onclick=()=>layarIsi(a.kode_qr,a,true);
+}
+
+// ---------- stiker baru: pilih alat -----------------------------------
+let CAL=[],rsPilih=null;
+async function layarDaftar(k){
+  judul("Daftarkan "+k);
+  const simpanRS=ls.get("pt3d_rs");
+  rsPilih=(!UJI&&RS.find(r=>String(r.id)===simpanRS))?Number(simpanRS):(RS[0]&&RS[0].id);
+  v.innerHTML='<div class="kode">'+esc(k)+'</div><p class="mut">Stiker ini belum terdaftar. Pilih alat tempat stiker ditempel.</p>'+
+   '<label for="rs">Rumah sakit</label><select id="rs">'+RS.map(r=>'<option value="'+r.id+'"'+(r.id==rsPilih?" selected":"")+'>'+esc(r.nama)+'</option>').join("")+'</select>'+
+   '<label for="cari">Cari nomor seri atau tipe</label><input type="search" id="cari" inputmode="search" placeholder="contoh: 1704 atau Perfusor" autocomplete="off">'+
+   '<div id="daftar"><p class="mut">Memuat daftar alat...</p></div>'+
+   '<button class="btn s" id="baru">+ Alat belum ada di daftar</button>';
+  $("#rs").onchange=async e=>{rsPilih=Number(e.target.value);if(!UJI)ls.set("pt3d_rs",String(rsPilih));await muatCalon(k)};
+  $("#cari").oninput=()=>gambarCalon(k);
+  $("#baru").onclick=()=>layarIsi(k,{customer_id:rsPilih,nama:"",merk:"",tipe:"",sn:"",status:"Akan diinstal",baru:true},false);
+  await muatCalon(k);
+}
+async function muatCalon(k){
+  $("#daftar").innerHTML='<p class="mut">Memuat daftar alat...</p>';
+  try{
+    const r=await sb.from("alat").select(KOLOM).eq("customer_id",rsPilih).is("kode_qr",null).order("tipe").order("sn").limit(1000);
+    if(r.error)throw r.error;CAL=r.data||[];gambarCalon(k);
+  }catch(e){$("#daftar").innerHTML='<div class="err">'+esc(pesanGalat(e))+'</div>'}
+}
+function gambarCalon(k){
+  const q=$("#cari").value.trim().toLowerCase(),el=$("#daftar");
+  const cocok=a=>!q||[a.sn,a.nama,a.merk,a.tipe,a.departemen].some(x=>String(x||"").toLowerCase().includes(q));
+  const adaSN=CAL.filter(a=>a.sn&&cocok(a)), tanpa=CAL.filter(a=>!a.sn&&cocok(a));
+  // nomor seri yang persis sama dengan ketikan tampil paling atas
+  adaSN.sort((a,b)=>(String(b.sn).toLowerCase()===q)-(String(a.sn).toLowerCase()===q));
+  const grup={};tanpa.forEach(a=>{const g=alatTxt(a);(grup[g]=grup[g]||[]).push(a)});
+  let h='<p class="mut">'+CAL.length+' alat di RS ini belum berstiker.</p>';
+  Object.keys(grup).forEach(g=>{h+='<button class="item" data-id="'+grup[g][0].id+'"><b>'+esc(g)+'</b><span>Tanpa nomor seri, '+grup[g].length+' unit belum berstiker. Nomor seri diisi di langkah berikut.</span></button>'});
+  adaSN.slice(0,30).forEach(a=>{h+='<button class="item" data-id="'+a.id+'"><b>SN '+esc(a.sn)+'</b><span>'+esc(alatTxt(a))+(a.departemen?" · "+esc(a.departemen):"")+' · '+esc(a.status)+'</span></button>'});
+  if(adaSN.length>30)h+='<p class="mut">Menampilkan 30 dari '+adaSN.length+'. Ketik nomor seri untuk mempersempit.</p>';
+  if(!adaSN.length&&!tanpa.length)h+='<p class="mut">Tidak ada alat yang cocok. Periksa rumah sakitnya, atau pakai tombol di bawah.</p>';
+  el.innerHTML=h;
+  el.querySelectorAll("[data-id]").forEach(b=>b.onclick=()=>{const a=CAL.find(x=>String(x.id)===b.dataset.id);if(a)layarIsi(k,a,false)});
+}
+
+// ---------- isi lokasi lalu simpan ------------------------------------
+function layarIsi(k,a,ubah){
+  judul((ubah?"Ubah ":"Daftarkan ")+k);
+  const d={dept:a.departemen||ls.get("pt3d_dept")||"",ruang:a.ruangan||(ubah?"":ls.get("pt3d_ruang")||""),
+           menetap:a.menetap!=null?a.menetap:(ls.get("pt3d_menetap")===null?null:ls.get("pt3d_menetap")==="1")};
+  const perluInstal=!ubah&&(a.baru||a.status==="Akan diinstal");
+  v.innerHTML='<div class="kode">'+esc(k)+'</div>'+
+   (a.baru?'<div class="card"><b>Alat baru di '+esc(rsNama(a.customer_id))+'</b>'+
+     '<label for="nm">Nama alat</label><input type="text" id="nm" placeholder="contoh: Patient Monitor">'+
+     '<label for="mk">Merk</label><input type="text" id="mk">'+
+     '<label for="tp">Tipe</label><input type="text" id="tp"></div>'
+    :'<div class="card"><b>'+esc(alatTxt(a))+'</b><div class="mut">'+esc(rsNama(a.customer_id))+' · '+esc(a.status)+'</div></div>')+
+   '<label for="sn">Nomor seri (dari label alat)</label><input type="text" id="sn" autocapitalize="characters" autocomplete="off" value="'+esc(a.sn||"")+'">'+
+   (a.sn&&!ubah?'<div class="mut">Cocokkan dengan label di alat. Kalau berbeda, berarti alat yang dipilih salah: kembali dan pilih ulang.</div>':'')+
+   '<label for="dp">Departemen</label><input type="text" id="dp" placeholder="contoh: ICU" value="'+esc(d.dept)+'">'+
+   '<label>Penempatan</label><div class="chips"><button class="chip'+(d.menetap===true?" on":"")+'" data-m="1">Menetap</button><button class="chip'+(d.menetap===false?" on":"")+'" data-m="0">Mobile</button></div>'+
+   '<label for="rg">Ruangan / bed (bila menetap)</label><input type="text" id="rg" placeholder="contoh: ICU Dewasa bed 3" value="'+esc(d.ruang)+'">'+
+   (perluInstal?'<label class="check"><input type="checkbox" id="ins" checked> Tandai terpasang</label><label for="ti">Tanggal instal</label><input type="date" id="ti" value="'+hariIni()+'">':'')+
+   '<div class="err" id="err"></div><button class="btn" id="simpan">'+(ubah?"Simpan perubahan":"Simpan: "+esc(k)+" untuk alat ini")+'</button>'+
+   '<button class="btn s" id="batal">Kembali</button>';
+  v.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{d.menetap=b.dataset.m==="1";v.querySelectorAll("[data-m]").forEach(x=>x.classList.toggle("on",x===b))});
+  $("#batal").onclick=()=>ubah?layarAlat(a,""):layarDaftar(k);
+  $("#simpan").onclick=async()=>{
+    const E=$("#err"),B=$("#simpan");E.textContent="";
+    const sn=$("#sn").value.trim(),dept=$("#dp").value.trim(),ruang=$("#rg").value.trim();
+    const isi={sn:sn||null,departemen:dept||null,ruangan:ruang||null,menetap:d.menetap};
+    if(a.baru){isi.nama=$("#nm").value.trim();isi.merk=$("#mk").value.trim()||null;isi.tipe=$("#tp").value.trim()||null;
+      if(!isi.nama){E.textContent="Nama alat wajib diisi.";return}
+      if(!sn){E.textContent="Nomor seri wajib diisi untuk alat baru.";return}}
+    if(!dept){E.textContent="Departemen wajib diisi.";return}
+    if(d.menetap==null){E.textContent="Pilih penempatan: Menetap atau Mobile.";return}
+    if(perluInstal&&$("#ins").checked){const t=$("#ti").value;if(!t){E.textContent="Isi tanggal instal.";return}isi.status="Terpasang";isi.tgl_instal=t}
+    B.disabled=true;B.textContent="Menyimpan...";
+    try{
+      let r;
+      if(a.baru){isi.customer_id=a.customer_id;isi.kode_qr=k;if(!isi.status)isi.status="Akan diinstal";
+        r=await sb.from("alat").insert(isi).select(KOLOM).maybeSingle();}
+      else if(ubah){r=await sb.from("alat").update(isi).eq("id",a.id).select(KOLOM).maybeSingle();}
+      else{isi.kode_qr=k;r=await sb.from("alat").update(isi).eq("id",a.id).is("kode_qr",null).select(KOLOM).maybeSingle();}
+      if(r.error)throw r.error;
+      if(!r.data)throw new Error(ubah?"Perubahan tidak tersimpan. Muat ulang lalu coba lagi.":"Alat ini baru saja diberi stiker lain. Kembali dan pilih alat yang benar.");
+      ls.set("pt3d_dept",dept);ls.set("pt3d_ruang",ruang);ls.set("pt3d_menetap",d.menetap?"1":"0");
+      layarAlat(r.data,ubah?"Perubahan tersimpan.":"Tersimpan. Stiker "+k+" terdaftar untuk alat ini.");
+      window.scrollTo(0,0);
+    }catch(e){E.textContent=pesanGalat(e);B.disabled=false;B.textContent=ubah?"Simpan perubahan":"Simpan: "+k+" untuk alat ini"}
+  };
+}
+mulai();
+</script>
+</body>
+</html>
