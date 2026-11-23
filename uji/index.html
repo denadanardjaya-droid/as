@@ -59,6 +59,7 @@ td.n,th.n{text-align:right}
 .u{display:flex;gap:10px;align-items:center;padding:10px 12px;border-bottom:1px solid #EEEAE0;font-size:14px;font-weight:400;margin:0}.u:last-child{border:0}
 .u input{width:20px;height:20px;flex:0 0 20px}
 textarea{width:100%;min-height:84px;padding:12px;border:1px solid #B9C4CE;border-radius:10px;font:inherit;background:#fff;color:var(--ink)}
+.grid4{display:grid;grid-template-columns:1fr 1fr;gap:8px}.stat{background:#FFFEFB;border:1px solid var(--line);border-radius:12px;padding:12px}.stat b{display:block;font-size:24px;color:var(--navy)}.stat span{font-size:13px;color:var(--mut)}
 .thumbs{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.thumbs img{width:76px;height:76px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
 input[type=file]{width:100%;padding:10px;border:1px dashed #B9C4CE;border-radius:10px;background:#fff;font-size:14px}
 .lnk{background:none;border:0;color:var(--pri);font-size:14px;padding:6px 0;text-decoration:underline}
@@ -72,7 +73,7 @@ pre{white-space:pre-wrap;font-family:inherit;font-size:14px;background:var(--chi
 <script>
 "use strict";
 // ---------------------------------------------------------------------
-// PT3D After-Sales - work order dengan foto dan penyelesaian, stiker QR, progres (v6, 23 Nov 2026)
+// PT3D After-Sales - work order, foto, penyelesaian, verifikasi, stiker QR, progres (v7, 23 Nov 2026)
 // Kunci di bawah adalah kunci PUBLIK (publishable). Keamanan data dijaga
 // oleh login dan aturan akses (RLS) di database, bukan oleh kunci ini.
 // ---------------------------------------------------------------------
@@ -167,9 +168,37 @@ async function layarBeranda(){
   judul("After-Sales PT3D");window.scrollTo(0,0);
   v.innerHTML='<p class="mut">Halo, '+esc(me.nama)+' ('+esc(me.peran)+').</p>'+
    '<button class="tile" id="mWO"><b>Work order</b><span>Daftar pekerjaan dan lapor pekerjaan baru</span></button>'+
+   (bolehVerif()?'<button class="tile" id="mVR"><b>Verifikasi <span class="tag" id="nVR" hidden></span></b><span>Periksa pekerjaan yang sudah selesai, tutup atau kembalikan</span></button>':'')+
    '<button class="tile" id="mST"><b>Daftarkan stiker</b><span>Tempel stiker QR ke alat dan catat lokasinya</span></button>'+
    '<button class="tile" id="mPR"><b>Progres instalasi</b><span>Jumlah unit terpasang per work order, salin ke WA</span></button>';
   $("#mWO").onclick=()=>layarWOList();$("#mST").onclick=()=>layarStiker();$("#mPR").onclick=()=>layarProgres();
+  if($("#mVR")){$("#mVR").onclick=()=>layarVerif();
+    try{const r=await sb.from("work_order").select("id",{count:"exact",head:true}).in("customer_id",RS.map(x=>x.id)).eq("status","Menunggu verifikasi");
+      const n=$("#nVR");if(n&&!r.error&&r.count){n.textContent=r.count+" menunggu";n.hidden=false}}catch(e){}}
+}
+// ---------- verifikasi (operasi dan manajemen) --------------------------
+let filtV="Menunggu verifikasi";
+async function layarVerif(pesan){
+  judul("Verifikasi");window.scrollTo(0,0);v.innerHTML='<p class="mut">Memuat...</p>';
+  try{
+    const r=await sb.from("work_order").select(KOLOM_WO).in("customer_id",RS.map(x=>x.id)).order("dibuat",{ascending:false}).limit(500);
+    if(r.error)throw r.error;const W=r.data||[],hari7=Date.now()-7*864e5;
+    const nMV=W.filter(w=>w.status==="Menunggu verifikasi").length,nDK=W.filter(w=>w.status==="Dikerjakan").length,
+          nLama=W.filter(w=>w.status==="Dikerjakan"&&new Date(w.dibuat).getTime()<hari7).length,nTL=W.filter(w=>w.tindak_lanjut&&w.status!=="Dikerjakan").length;
+    const gambar=()=>{
+      const L=filtV==="lama"?W.filter(w=>w.status==="Dikerjakan"&&new Date(w.dibuat).getTime()<hari7):filtV==="tl"?W.filter(w=>w.tindak_lanjut&&w.status!=="Dikerjakan"):W.filter(w=>w.status===filtV);
+      const fase={};W.forEach(w=>{const f=w.fase||"-";fase[f]=fase[f]||{b:0,v:0,t:0};fase[f][w.status==="Dikerjakan"?"b":w.status==="Menunggu verifikasi"?"v":"t"]++});
+      v.innerHTML=(pesan?'<div class="okb">'+esc(pesan)+'</div>':'')+
+        '<div class="grid4"><div class="stat"><b>'+nMV+'</b><span>Menunggu verifikasi</span></div><div class="stat"><b>'+nDK+'</b><span>Sedang dikerjakan</span></div><div class="stat"><b>'+nLama+'</b><span>Dikerjakan lebih dari 7 hari</span></div><div class="stat"><b>'+nTL+'</b><span>Perlu tindak lanjut</span></div></div>'+
+        '<div class="chips" style="margin:12px 0">'+[["Menunggu verifikasi","Menunggu verifikasi"],["Dikerjakan","Dikerjakan"],["lama","Lebih dari 7 hari"],["tl","Tindak lanjut"],["Ditutup","Ditutup"]].map(x=>'<button class="chip'+(filtV===x[0]?" on":"")+'" data-fv="'+x[0]+'">'+x[1]+'</button>').join("")+'</div>'+
+        (L.map(w=>'<button class="card wo" data-id="'+esc(w.id)+'"><div class="rowb"><b>'+esc(w.nomor)+'</b><span>'+tagWO(w)+'</span></div><div>'+esc(rsNama(w.customer_id))+(w.departemen?" - "+esc(w.departemen):"")+'</div><div class="mut">'+esc((w.jenis||[]).join(", "))+' · '+esc(w.fase||"-")+(w.hasil?' · Hasil: '+esc(w.hasil):'')+'</div><div class="mut">Dibuat '+tglJam(w.dibuat)+(w.selesai_pada?' · selesai '+tglJam(w.selesai_pada):'')+'</div></button>').join("")||'<p class="mut">Tidak ada work order di daftar ini.</p>')+
+        '<h2>Rekap per fase</h2><div class="card"><table><tr><th>Fase</th><th class="n">Dikerjakan</th><th class="n">Verifikasi</th><th class="n">Ditutup</th></tr>'+Object.keys(fase).sort().map(f=>'<tr><td>'+esc(f)+'</td><td class="n">'+fase[f].b+'</td><td class="n">'+fase[f].v+'</td><td class="n">'+fase[f].t+'</td></tr>').join("")+'</table></div>'+tombolBeranda;
+      pasangBeranda();pesan="";
+      v.querySelectorAll("[data-fv]").forEach(b=>b.onclick=()=>{filtV=b.dataset.fv;gambar()});
+      v.querySelectorAll(".wo").forEach(b=>b.onclick=()=>layarWODetail(b.dataset.id,"","verif"));
+    };
+    gambar();
+  }catch(e){v.innerHTML='<div class="err">'+esc(pesanGalat(e))+'</div>'+tombolBeranda;pasangBeranda()}
 }
 const tombolBeranda='<button class="btn s" id="keBeranda">Kembali ke Beranda</button>';
 const pasangBeranda=()=>{const b=$("#keBeranda");if(b)b.onclick=()=>layarBeranda()};
@@ -210,6 +239,7 @@ const tglJam=d=>d?new Date(d).toLocaleString("id-ID",{day:"numeric",month:"short
 const tagWO=w=>'<span class="tag '+(w.status==="Dikerjakan"?"o":w.status==="Menunggu verifikasi"?"":"g")+'">'+esc(w.status)+'</span>'+(w.catatan_kembali&&w.status==="Dikerjakan"?' <span class="tag r">Dikembalikan</span>':'');
 const chips=(arr,sel,nm,multi)=>'<div class="chips">'+arr.map(a=>'<button type="button" class="chip'+((multi?sel.includes(a):sel===a)?" on":"")+'" data-'+nm+'="'+esc(a)+'">'+esc(a)+'</button>').join("")+'</div>';
 let ORANG=null,filtWO="buka";
+const bolehVerif=()=>!!me&&(me.peran==="operasi"||me.peran==="manajemen");
 async function namaOrang(id){
   if(!ORANG){const r=await sb.from("pengguna").select("id,nama");ORANG=r.error?[]:(r.data||[])}
   return (ORANG.find(o=>o.id===id)||{}).nama||"petugas";
@@ -250,7 +280,7 @@ async function layarWOList(pesan){
     gambar();
   }catch(e){v.innerHTML='<div class="err">'+esc(pesanGalat(e))+'</div>'+tombolBeranda;pasangBeranda()}
 }
-async function layarWODetail(id,pesan){
+async function layarWODetail(id,pesan,asal){
   judul("Work order");window.scrollTo(0,0);v.innerHTML='<p class="mut">Memuat...</p>';
   try{
     const r=await sb.from("work_order").select(KOLOM_WO).eq("id",id).maybeSingle();if(r.error)throw r.error;
@@ -274,14 +304,24 @@ async function layarWODetail(id,pesan){
       '<h2>Ringkasan untuk grup WA</h2><pre id="wa"></pre><button class="btn s" id="salinWA">Salin pesan WA</button><div class="okb" id="okWA" hidden></div>'+
       htmlFoto(F)+
       (w.status==="Dikerjakan"?'<button class="btn" id="selesaikan">Selesaikan pekerjaan</button>':'')+
-      (w.status==="Menunggu verifikasi"?'<p class="mut">Menunggu verifikasi oleh operasi.</p>':'')+
-      '<button class="btn s" id="keDaftar">Kembali ke daftar work order</button>';
-    $("#wa").textContent=wa;$("#keDaftar").onclick=()=>layarWOList();
+      (w.status==="Menunggu verifikasi"?(bolehVerif()?'<h2>Verifikasi</h2><div class="card"><label for="cv" style="margin-top:0">Catatan verifikasi</label><textarea id="cv" placeholder="Wajib diisi bila dikembalikan"></textarea><div class="err" id="errV"></div><button class="btn" id="tutupWO">Tutup work order</button><button class="btn s" id="kembaliWO">Kembalikan ke teknisi</button></div>':'<p class="mut">Menunggu verifikasi oleh operasi.</p>'):'')+
+      '<button class="btn s" id="keDaftar">'+(asal==="verif"?"Kembali ke daftar verifikasi":"Kembali ke daftar work order")+'</button>';
+    const balik=p=>asal==="verif"?layarVerif(p):layarWOList(p);
+    $("#wa").textContent=wa;$("#keDaftar").onclick=()=>balik();
+    const aksiV=async(tutup)=>{const E=$("#errV"),c=$("#cv").value.trim(),B=tutup?$("#tutupWO"):$("#kembaliWO");
+      if(!tutup&&!c){E.textContent="Tulis dulu apa yang harus dilengkapi teknisi.";return}
+      $("#tutupWO").disabled=true;$("#kembaliWO").disabled=true;E.textContent="";
+      try{const isi=tutup?{status:"Ditutup",catatan_verif:c||null}:{status:"Dikerjakan",catatan_kembali:c};
+        const u=await sb.from("work_order").update(isi).eq("id",w.id).eq("status","Menunggu verifikasi").select("id").maybeSingle();
+        if(u.error)throw u.error;if(!u.data)throw new Error("Work order ini sudah tidak berstatus Menunggu verifikasi. Muat ulang untuk melihat keadaannya.");
+        await balik(w.nomor+(tutup?" ditutup.":" dikembalikan ke teknisi."));
+      }catch(e){E.textContent=pesanGalat(e);$("#tutupWO").disabled=false;$("#kembaliWO").disabled=false}};
+    if($("#tutupWO")){$("#tutupWO").onclick=()=>aksiV(true);$("#kembaliWO").onclick=()=>aksiV(false)}
     if($("#selesaikan"))$("#selesaikan").onclick=()=>layarSelesai(w,us);
     $("#salinWA").onclick=async()=>{const ok=$("#okWA");ok.hidden=false;
       try{await navigator.clipboard.writeText(wa);ok.textContent="Tersalin. Buka WhatsApp lalu tempel di grup."}
       catch(e){try{const g=document.createRange();g.selectNodeContents($("#wa"));const s=getSelection();s.removeAllRanges();s.addRange(g)}catch(_){}ok.textContent="Teks sudah diblok; tekan lama lalu pilih Salin."}};
-  }catch(e){v.innerHTML='<div class="err">'+esc(pesanGalat(e))+'</div><button class="btn s" id="keDaftar">Kembali ke daftar work order</button>';$("#keDaftar").onclick=()=>layarWOList()}
+  }catch(e){v.innerHTML='<div class="err">'+esc(pesanGalat(e))+'</div><button class="btn s" id="keDaftar">Kembali</button>';$("#keDaftar").onclick=()=>asal==="verif"?layarVerif():layarWOList()}
 }
 // ---------- foto: perkecil, unggah, tampilkan --------------------------
 const HASIL=["Selesai","Dipantau","Menunggu part","Eskalasi ke prinsipal","Bukan masalah alat"];
@@ -505,12 +545,21 @@ function layarAlat(a,pesan){
    '<span>Tgl instal</span><span>'+tgl(a.tgl_instal)+'</span>'+
    '<span>Stiker dipasang</span><span>'+tgl(a.didaftar_pada)+'</span></div></div>'+
    '<button class="btn" id="laporAlat">Lapor pekerjaan untuk alat ini</button><button class="btn s" id="ubah">Ubah lokasi atau nomor seri</button>'+
+   (bolehVerif()?'<div class="err" id="errL"></div><button class="lnk" id="lepas">Koreksi: lepaskan stiker ini dari alat (salah daftar)</button>':'')+
    '<h2>Stiker berikutnya</h2><div class="card"><p class="mut">Pindai stiker berikutnya dengan kamera HP, atau ketik angkanya:</p>'+
    '<div class="row"><input type="text" id="kd" inputmode="numeric" placeholder="angka stiker"><button class="btn" id="buka" style="margin:0;flex:0 0 90px">Buka</button></div><div class="err" id="err"></div></div>';
   const buka=()=>{const k=normKode($("#kd").value);if(!kodeSah(k)){$("#err").textContent="Kode tidak dikenali.";return}location.href=location.pathname+"?u="+k};
   $("#buka").onclick=buka;$("#kd").onkeydown=e=>{if(e.key==="Enter")buka()};
   $("#ubah").onclick=()=>layarIsi(a.kode_qr,a,true);
   $("#laporAlat").onclick=()=>layarWOBaru({rs:a.customer_id,alat:[a.id],dept:a.departemen||"",q:a.sn||""});
+  if($("#lepas")){let yakin=false;$("#lepas").onclick=async()=>{const b=$("#lepas");
+    if(!yakin){yakin=true;b.textContent="Ketuk sekali lagi untuk melepas stiker "+a.kode_qr+" dari alat ini";return}
+    b.disabled=true;
+    try{const u=await sb.from("alat").update({kode_qr:null}).eq("id",a.id).eq("kode_qr",a.kode_qr).select("id").maybeSingle();
+      if(u.error)throw u.error;if(!u.data)throw new Error("Stiker sudah tidak terpasang pada alat ini.");
+      const k=a.kode_qr;judul(k);v.innerHTML='<div class="okb">Stiker '+esc(k)+' dilepas dari '+esc(alatTxt(a))+(a.sn?' SN '+esc(a.sn):'')+'. Stiker itu sekarang bisa didaftarkan ke alat yang benar.</div><button class="btn" id="daftarUlang">Daftarkan '+esc(k)+' ke alat lain</button>'+tombolBeranda;
+      pasangBeranda();$("#daftarUlang").onclick=()=>{location.href=location.pathname+"?u="+k};
+    }catch(e){$("#errL").textContent=pesanGalat(e);b.disabled=false;yakin=false;b.textContent="Koreksi: lepaskan stiker ini dari alat (salah daftar)"}}}
 }
 
 // ---------- stiker baru: pilih alat -----------------------------------
