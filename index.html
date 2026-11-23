@@ -6,10 +6,10 @@
 <meta name="robots" content="noindex, nofollow">
 <title>After-Sales PT3D</title>
 <style>
-:root{--ink:#1B2733;--mut:#5B6875;--line:#D9E0E6;--bg:#F4F6F8;--pri:#0B5C8A;--pri2:#084A70;--ok:#1E7B4A;--okbg:#E6F4EC;--red:#B42318;--redbg:#FDECEA;--chip:#EEF4F8}
+:root{--ink:#1F2D42;--mut:#5B6B80;--line:#DDD8CC;--bg:#F4F2EC;--navy:#14263F;--pri:#0F766E;--pri2:#0B5F58;--ok:#1E7B4A;--okbg:#E6F4EC;--red:#B42318;--redbg:#FDECEA;--chip:#EEF4F8}
 *{box-sizing:border-box}
 body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:16px;line-height:1.45}
-header{background:var(--pri);color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;position:sticky;top:0;z-index:5}
+header{background:var(--navy);color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;position:sticky;top:0;z-index:5}
 header b{font-size:16px}
 header button{background:rgba(255,255,255,.16);color:#fff;border:0;border-radius:8px;padding:7px 10px;font-size:13px}
 main{max-width:560px;margin:0 auto;padding:14px 14px 60px}
@@ -45,17 +45,35 @@ td.n,th.n{text-align:right}
 .uji{background:#FFF4CE;color:#6B4E00;border-bottom:1px solid #E8C96A;padding:8px 14px;font-size:13px;font-weight:600;text-align:center}
 .bar{height:10px;background:#E3E9EE;border-radius:99px;overflow:hidden;margin:8px 0}
 .bar i{display:block;height:100%;background:var(--ok)}
+.uji{position:sticky;top:48px;z-index:4}
+.tile{display:block;width:100%;text-align:left;background:#FFFEFB;border:1px solid var(--line);border-radius:14px;padding:18px 16px;margin:12px 0;color:var(--ink);font-size:16px}
+.tile b{display:block;font-size:18px;color:var(--navy);margin-bottom:4px}
+.tile span{color:var(--mut);font-size:14px}
+.tag{display:inline-block;font-size:12px;font-weight:600;padding:2px 9px;border-radius:20px;background:#DCEFEA;color:#0F5E59}
+.tag.o{background:#FCE7CF;color:#A85A12}.tag.g{background:#E4E7EC;color:#344054}.tag.r{background:#FBE0DD;color:var(--red)}
+.wo{display:block;width:100%;text-align:left;font:inherit;color:inherit}
+.wo b{color:var(--navy)}
+.rowb{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.tabs{display:flex;gap:8px;margin-bottom:6px}.tabs .chip{flex:1;text-align:center}
+.units{max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:10px;background:#fff}
+.u{display:flex;gap:10px;align-items:center;padding:10px 12px;border-bottom:1px solid #EEEAE0;font-size:14px;font-weight:400;margin:0}.u:last-child{border:0}
+.u input{width:20px;height:20px;flex:0 0 20px}
+textarea{width:100%;min-height:84px;padding:12px;border:1px solid #B9C4CE;border-radius:10px;font:inherit;background:#fff;color:var(--ink)}
+.grid4{display:grid;grid-template-columns:1fr 1fr;gap:8px}.stat{background:#FFFEFB;border:1px solid var(--line);border-radius:12px;padding:12px}.stat b{display:block;font-size:24px;color:var(--navy)}.stat span{font-size:13px;color:var(--mut)}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.thumbs img{width:76px;height:76px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+input[type=file]{width:100%;padding:10px;border:1px dashed #B9C4CE;border-radius:10px;background:#fff;font-size:14px}
+.lnk{background:none;border:0;color:var(--pri);font-size:14px;padding:6px 0;text-decoration:underline}
 pre{white-space:pre-wrap;font-family:inherit;font-size:14px;background:var(--chip);border-radius:10px;padding:10px;margin:8px 0}
 </style>
 </head>
 <body>
 <header><b id="ttl">After-Sales PT3D</b><span><button id="home" hidden>Beranda</button> <button id="out" hidden>Keluar</button></span></header>
-<div class="uji" id="uji" hidden>VERSI UJI. Pakai "RS UJI (percobaan)" dan kode stiker 99001 ke atas.</div>
+<div class="uji" id="uji" hidden>VERSI UJI. Hanya data "RS UJI (percobaan)" yang tampil. Kode stiker: 99001 ke atas.</div>
 <main id="v"><p class="mut">Memuat...</p></main>
 <script>
 "use strict";
 // ---------------------------------------------------------------------
-// PT3D After-Sales - registrasi stiker QR + progres instalasi (v2, 20 Nov 2026)
+// PT3D After-Sales - work order, foto, penyelesaian, verifikasi, stiker QR, progres (v7, 23 Nov 2026)
 // Kunci di bawah adalah kunci PUBLIK (publishable). Keamanan data dijaga
 // oleh login dan aturan akses (RLS) di database, bukan oleh kunci ini.
 // ---------------------------------------------------------------------
@@ -79,7 +97,7 @@ function pesanGalat(e){
   const m=(e&&(e.message||e.error_description))||String(e||"");
   if(/alat_kode_qr_unik/.test(m))return "Stiker ini sudah terdaftar pada alat lain. Muat ulang halaman untuk melihatnya.";
   if(/alat_merk_tipe_sn_unik/.test(m))return "Nomor seri ini sudah dipakai alat lain dengan merk dan tipe yang sama. Periksa lagi nomor serinya.";
-  if(/sudah terdaftar pada alat ini/.test(m))return m;
+  if(/sudah terdaftar pada alat ini|Foto gagal diunggah|sudah tidak berstatus|wajib diisi|boleh menutup|harus diselesaikan/.test(m))return m;
   if(/row-level security|permission denied/i.test(m))return "Akun ini tidak punya izin untuk tindakan tersebut.";
   if(/Failed to fetch|NetworkError|Load failed/i.test(m))return "Tidak ada sambungan internet. Data BELUM tersimpan, coba lagi setelah sinyal ada.";
   return "Gagal: "+m;
@@ -110,12 +128,11 @@ async function sesudahLogin(user){
   try{
     const r=await sb.from("pengguna").select("nama,peran,aktif").eq("id",user.id).maybeSingle();
     if(r.error)throw r.error;
-    me=r.data&&r.data.aktif?r.data:null;
+    me=r.data&&r.data.aktif?Object.assign({id:user.id},r.data):null;
     if(!me){tombolAtas(false);$("#out").hidden=false;
       v.innerHTML='<div class="card"><b>Akun belum diberi akses</b><p class="mut">Email '+esc(user.email)+' berhasil login, tetapi belum terdaftar sebagai pengguna aktif. Hubungi manajemen PT3D.</p></div>';return}
     const c=await sb.from("customer").select("id,nama").order("nama");
-    if(c.error)throw c.error;RS=(c.data||[]).filter(r=>UJI||!rsUji(r.nama));
-    if(UJI)RS.sort((a,b)=>rsUji(b.nama)-rsUji(a.nama));
+    if(c.error)throw c.error;RS=(c.data||[]).filter(r=>UJI?rsUji(r.nama):!rsUji(r.nama));
     tombolAtas(true);
     if(kode)await bukaKode(kode);else await layarBeranda();
   }catch(e){v.innerHTML='<div class="err">'+esc(pesanGalat(e))+'</div><button class="btn s" onclick="location.reload()">Coba lagi</button>'}
@@ -146,23 +163,330 @@ async function hitung(cid,berstiker){
   if(berstiker)q=q.not("kode_qr","is",null);
   const r=await q;if(r.error)throw r.error;return r.count||0;
 }
+// ---------- beranda: menu ----------------------------------------------
 async function layarBeranda(){
-  judul("After-Sales PT3D");
+  judul("After-Sales PT3D");window.scrollTo(0,0);
   v.innerHTML='<p class="mut">Halo, '+esc(me.nama)+' ('+esc(me.peran)+').</p>'+
-   '<div class="card"><h1>Daftarkan stiker</h1><p class="mut">Cara tercepat: pindai stiker dengan kamera HP, halaman ini terbuka sendiri dengan kodenya. Atau ketik angka di stiker:</p>'+
+   '<button class="tile" id="mWO"><b>Work order</b><span>Daftar pekerjaan dan lapor pekerjaan baru</span></button>'+
+   (bolehVerif()?'<button class="tile" id="mVR"><b>Verifikasi <span class="tag" id="nVR" hidden></span></b><span>Periksa pekerjaan yang sudah selesai, tutup atau kembalikan</span></button>':'')+
+   '<button class="tile" id="mST"><b>Daftarkan stiker</b><span>Tempel stiker QR ke alat dan catat lokasinya</span></button>'+
+   '<button class="tile" id="mPR"><b>Progres instalasi</b><span>Jumlah unit terpasang per work order, salin ke WA</span></button>';
+  $("#mWO").onclick=()=>layarWOList();$("#mST").onclick=()=>layarStiker();$("#mPR").onclick=()=>layarProgres();
+  if($("#mVR")){$("#mVR").onclick=()=>layarVerif();
+    try{const r=await sb.from("work_order").select("id",{count:"exact",head:true}).in("customer_id",RS.map(x=>x.id)).eq("status","Menunggu verifikasi");
+      const n=$("#nVR");if(n&&!r.error&&r.count){n.textContent=r.count+" menunggu";n.hidden=false}}catch(e){}}
+}
+// ---------- verifikasi (operasi dan manajemen) --------------------------
+let filtV="Menunggu verifikasi";
+async function layarVerif(pesan){
+  judul("Verifikasi");window.scrollTo(0,0);v.innerHTML='<p class="mut">Memuat...</p>';
+  try{
+    const r=await sb.from("work_order").select(KOLOM_WO).in("customer_id",RS.map(x=>x.id)).order("dibuat",{ascending:false}).limit(500);
+    if(r.error)throw r.error;const W=r.data||[],hari7=Date.now()-7*864e5;
+    const nMV=W.filter(w=>w.status==="Menunggu verifikasi").length,nDK=W.filter(w=>w.status==="Dikerjakan").length,
+          nLama=W.filter(w=>w.status==="Dikerjakan"&&new Date(w.dibuat).getTime()<hari7).length,nTL=W.filter(w=>w.tindak_lanjut&&w.status!=="Dikerjakan").length;
+    const gambar=()=>{
+      const L=filtV==="lama"?W.filter(w=>w.status==="Dikerjakan"&&new Date(w.dibuat).getTime()<hari7):filtV==="tl"?W.filter(w=>w.tindak_lanjut&&w.status!=="Dikerjakan"):W.filter(w=>w.status===filtV);
+      const fase={};W.forEach(w=>{const f=w.fase||"-";fase[f]=fase[f]||{b:0,v:0,t:0};fase[f][w.status==="Dikerjakan"?"b":w.status==="Menunggu verifikasi"?"v":"t"]++});
+      v.innerHTML=(pesan?'<div class="okb">'+esc(pesan)+'</div>':'')+
+        '<div class="grid4"><div class="stat"><b>'+nMV+'</b><span>Menunggu verifikasi</span></div><div class="stat"><b>'+nDK+'</b><span>Sedang dikerjakan</span></div><div class="stat"><b>'+nLama+'</b><span>Dikerjakan lebih dari 7 hari</span></div><div class="stat"><b>'+nTL+'</b><span>Perlu tindak lanjut</span></div></div>'+
+        '<div class="chips" style="margin:12px 0">'+[["Menunggu verifikasi","Menunggu verifikasi"],["Dikerjakan","Dikerjakan"],["lama","Lebih dari 7 hari"],["tl","Tindak lanjut"],["Ditutup","Ditutup"]].map(x=>'<button class="chip'+(filtV===x[0]?" on":"")+'" data-fv="'+x[0]+'">'+x[1]+'</button>').join("")+'</div>'+
+        (L.map(w=>'<button class="card wo" data-id="'+esc(w.id)+'"><div class="rowb"><b>'+esc(w.nomor)+'</b><span>'+tagWO(w)+'</span></div><div>'+esc(rsNama(w.customer_id))+(w.departemen?" - "+esc(w.departemen):"")+'</div><div class="mut">'+esc((w.jenis||[]).join(", "))+' · '+esc(w.fase||"-")+(w.hasil?' · Hasil: '+esc(w.hasil):'')+'</div><div class="mut">Dibuat '+tglJam(w.dibuat)+(w.selesai_pada?' · selesai '+tglJam(w.selesai_pada):'')+'</div></button>').join("")||'<p class="mut">Tidak ada work order di daftar ini.</p>')+
+        '<h2>Rekap per fase</h2><div class="card"><table><tr><th>Fase</th><th class="n">Dikerjakan</th><th class="n">Verifikasi</th><th class="n">Ditutup</th></tr>'+Object.keys(fase).sort().map(f=>'<tr><td>'+esc(f)+'</td><td class="n">'+fase[f].b+'</td><td class="n">'+fase[f].v+'</td><td class="n">'+fase[f].t+'</td></tr>').join("")+'</table></div>'+tombolBeranda;
+      pasangBeranda();pesan="";
+      v.querySelectorAll("[data-fv]").forEach(b=>b.onclick=()=>{filtV=b.dataset.fv;gambar()});
+      v.querySelectorAll(".wo").forEach(b=>b.onclick=()=>layarWODetail(b.dataset.id,"","verif"));
+    };
+    gambar();
+  }catch(e){v.innerHTML='<div class="err">'+esc(pesanGalat(e))+'</div>'+tombolBeranda;pasangBeranda()}
+}
+const tombolBeranda='<button class="btn s" id="keBeranda">Kembali ke Beranda</button>';
+const pasangBeranda=()=>{const b=$("#keBeranda");if(b)b.onclick=()=>layarBeranda()};
+async function layarProgres(){
+  judul("Progres instalasi");window.scrollTo(0,0);
+  v.innerHTML='<div id="pwo"><p class="mut">Memuat...</p></div>'+tombolBeranda;pasangBeranda();
+  await muatProgres();
+}
+async function layarStiker(){
+  judul("Daftarkan stiker");window.scrollTo(0,0);
+  v.innerHTML='<div class="card"><p class="mut" style="margin-top:0">Cara tercepat: pindai stiker dengan kamera HP, halaman ini terbuka sendiri dengan kodenya. Atau ketik angka di stiker:</p>'+
    '<label for="kd">Kode stiker</label><div class="row"><input type="text" id="kd" inputmode="numeric" placeholder="contoh: 15 atau 3D-00015"></div>'+
    '<div class="err" id="err"></div><button class="btn" id="buka">Buka</button></div>'+
-   '<h2>Progres instalasi</h2><div id="pwo"><p class="mut">Memuat...</p></div>'+
-   '<h2>Stiker per rumah sakit</h2><div class="card" id="prog"><p class="mut">Menghitung...</p></div>';
-  muatProgres();
+   '<h2>Stiker per rumah sakit</h2><div class="card" id="prog"><p class="mut">Menghitung...</p></div>'+tombolBeranda;pasangBeranda();
   const buka=()=>{const k=normKode($("#kd").value);if(!kodeSah(k)){$("#err").textContent="Kode tidak dikenali. Ketik angka pada stiker, misalnya 15.";return}location.href=location.pathname+"?u="+k};
   $("#buka").onclick=buka;$("#kd").onkeydown=e=>{if(e.key==="Enter")buka()};
   try{
     let h='<table><tr><th>Rumah sakit</th><th class="n">Unit</th><th class="n">Berstiker</th></tr>',T=0,S=0;
     for(const r of RS){const t=await hitung(r.id,false),s=await hitung(r.id,true);T+=t;S+=s;h+='<tr><td>'+esc(r.nama)+'</td><td class="n">'+t+'</td><td class="n">'+s+'</td></tr>'}
     h+='<tr><th>Total</th><th class="n">'+T+'</th><th class="n">'+S+'</th></tr></table>';
-    $("#prog").innerHTML=h;
-  }catch(e){$("#prog").innerHTML='<div class="err">'+esc(pesanGalat(e))+'</div>'}
+    if($("#prog"))$("#prog").innerHTML=h;
+  }catch(e){if($("#prog"))$("#prog").innerHTML='<div class="err">'+esc(pesanGalat(e))+'</div>'}
+}
+
+// ---------- work order: daftar, rincian, lapor baru --------------------
+const JENIS=["Instalasi","Training alat","Uji fungsi alat","Pemeriksaan alat","Perbaikan","Maintenance alat","Demo alat","Serah terima","Visit","Upgrade software","Pengiriman/pengambilan unit","Dokumen","Lainnya"];
+const ASAL=["Komplain RS","Jadwal","Permintaan internal"],PRIO=["Kritis","Tinggi","Sedang","Rendah"];
+const KOLOM_WO="id,nomor,customer_id,departemen,jenis,asal,prioritas,fase,pelapor,cerita,tgl_lapor,tgl_kunjungan,status,hasil,catatan,petugas_rs,tindak_lanjut,selesai_pada,catatan_kembali,catatan_verif,diverif_pada,dibuat_oleh,dibuat,tgl_bast";
+function faseDari(j,asal){
+  if(j.some(x=>["Demo alat","Visit"].includes(x))&&asal!=="Komplain RS")return "Pre Project";
+  if(j.some(x=>["Instalasi","Uji fungsi alat","Serah terima"].includes(x)))return "Instalasi";
+  if(j.includes("Maintenance alat")&&asal!=="Komplain RS")return "Post Project: PM";
+  if(asal==="Komplain RS")return "Post Project: Komplain";
+  return "Post Project: Non PM";
+}
+const tgl2=s=>s?new Date(s+"T00:00:00+07:00").toLocaleDateString("id-ID",{day:"numeric",month:"short",year:"numeric",timeZone:"Asia/Jakarta"}):"-";
+const tglJam=d=>d?new Date(d).toLocaleString("id-ID",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit",timeZone:"Asia/Jakarta"}):"-";
+const tagWO=w=>'<span class="tag '+(w.status==="Dikerjakan"?"o":w.status==="Menunggu verifikasi"?"":"g")+'">'+esc(w.status)+'</span>'+(w.catatan_kembali&&w.status==="Dikerjakan"?' <span class="tag r">Dikembalikan</span>':'');
+const chips=(arr,sel,nm,multi)=>'<div class="chips">'+arr.map(a=>'<button type="button" class="chip'+((multi?sel.includes(a):sel===a)?" on":"")+'" data-'+nm+'="'+esc(a)+'">'+esc(a)+'</button>').join("")+'</div>';
+let ORANG=null,filtWO="buka";
+const bolehVerif=()=>!!me&&(me.peran==="operasi"||me.peran==="manajemen");
+async function namaOrang(id){
+  if(!ORANG){const r=await sb.from("pengguna").select("id,nama");ORANG=r.error?[]:(r.data||[])}
+  return (ORANG.find(o=>o.id===id)||{}).nama||"petugas";
+}
+async function alatWO(woId){
+  const a=await sb.from("wo_alat").select("alat_id").eq("wo_id",woId).limit(1000);if(a.error)throw a.error;
+  const ids=(a.data||[]).map(x=>x.alat_id),out=[];
+  for(let i=0;i<ids.length;i+=150){const r=await sb.from("alat").select("id,nama,merk,tipe,sn").in("id",ids.slice(i,i+150));if(r.error)throw r.error;out.push(...(r.data||[]))}
+  return out;
+}
+function ringkasAlat(us){
+  const g={};us.forEach(u=>{const k=[u.nama,u.tipe].filter(Boolean).join(" ");(g[k]=g[k]||[]).push(u.sn||"tanpa SN")});
+  return Object.entries(g).map(([k,s])=>k+(s.length>3?" ("+s.length+" unit)":" (SN "+s.join(", ")+")")).join("; ")||"-";
+}
+function teksWA(w,us,teknisi){
+  let t="*"+w.nomor+"* | "+(w.fase||"-")+"\nRS: "+rsNama(w.customer_id)+(w.departemen?" - "+w.departemen:"")+"\nAlat: "+ringkasAlat(us)+"\nPekerjaan: "+(w.jenis||[]).join(", ")+
+    (w.tgl_lapor?"\nTgl "+(w.asal==="Komplain RS"?"komplain":"permintaan")+": "+tgl2(w.tgl_lapor):"")+(w.tgl_kunjungan?"\nTgl kunjungan: "+tgl2(w.tgl_kunjungan):"")+
+    (w.prioritas?"\nPrioritas: "+w.prioritas:"")+(w.pelapor?"\nPelapor: "+w.pelapor:"")+"\nKeterangan: "+(w.cerita||"-");
+  if(w.hasil)t+="\n\nHasil: "+w.hasil+(w.catatan?"\nCatatan: "+w.catatan:"")+(w.petugas_rs?"\nDiketahui: "+w.petugas_rs:"")+(w.tgl_bast?"\nTgl BAST: "+tgl2(w.tgl_bast):"")+(w.tindak_lanjut?"\nPerlu tindak lanjut: ya":"");
+  return t+"\nStatus: "+w.status+"\nTeknisi: "+teknisi;
+}
+async function layarWOList(pesan){
+  judul("Work order");window.scrollTo(0,0);v.innerHTML='<p class="mut">Memuat work order...</p>';
+  try{
+    const r=await sb.from("work_order").select(KOLOM_WO).in("customer_id",RS.map(x=>x.id)).order("dibuat",{ascending:false}).limit(300);
+    if(r.error)throw r.error;const W=r.data||[];
+    const gambar=()=>{
+      const L=W.filter(w=>filtWO==="buka"?w.status==="Dikerjakan":w.status!=="Dikerjakan");
+      v.innerHTML=(pesan?'<div class="okb">'+esc(pesan)+'</div>':'')+
+        '<button class="btn" id="baruWO">+ Lapor pekerjaan baru</button>'+
+        '<div class="tabs" style="margin-top:14px"><button class="chip'+(filtWO==="buka"?" on":"")+'" data-f="buka">Sedang dikerjakan ('+W.filter(w=>w.status==="Dikerjakan").length+')</button><button class="chip'+(filtWO!=="buka"?" on":"")+'" data-f="sls">Selesai ('+W.filter(w=>w.status!=="Dikerjakan").length+')</button></div>'+
+        (L.map(w=>'<button class="card wo" data-id="'+esc(w.id)+'"><div class="rowb"><b>'+esc(w.nomor)+'</b><span>'+tagWO(w)+'</span></div><div>'+esc(rsNama(w.customer_id))+(w.departemen?" - "+esc(w.departemen):"")+'</div><div class="mut">'+esc((w.jenis||[]).join(", "))+' · '+esc(w.fase||"-")+'</div><div class="mut">'+tglJam(w.dibuat)+'</div></button>').join("")||'<p class="mut">Belum ada work order di daftar ini.</p>')+tombolBeranda;
+      pasangBeranda();pesan="";
+      $("#baruWO").onclick=()=>layarWOBaru();
+      v.querySelectorAll("[data-f]").forEach(b=>b.onclick=()=>{filtWO=b.dataset.f;gambar()});
+      v.querySelectorAll(".wo").forEach(b=>b.onclick=()=>layarWODetail(b.dataset.id));
+    };
+    gambar();
+  }catch(e){v.innerHTML='<div class="err">'+esc(pesanGalat(e))+'</div>'+tombolBeranda;pasangBeranda()}
+}
+async function layarWODetail(id,pesan,asal){
+  judul("Work order");window.scrollTo(0,0);v.innerHTML='<p class="mut">Memuat...</p>';
+  try{
+    const r=await sb.from("work_order").select(KOLOM_WO).eq("id",id).maybeSingle();if(r.error)throw r.error;
+    const w=r.data;if(!w||!RS.find(x=>x.id==w.customer_id))throw new Error("Work order tidak ditemukan.");
+    const us=await alatWO(w.id),teknisi=await namaOrang(w.dibuat_oleh),wa=teksWA(w,us,teknisi);
+    let F=[];try{F=await fotoWO(w.id)}catch(e){}
+    judul(w.nomor);
+    v.innerHTML=(pesan?'<div class="okb">'+esc(pesan)+'</div>':'')+
+      '<div class="card"><div class="rowb"><b>'+esc(rsNama(w.customer_id))+(w.departemen?" - "+esc(w.departemen):"")+'</b><span>'+tagWO(w)+'</span></div><div class="kv" style="margin-top:10px">'+
+      '<span>Dibuat</span><span>'+tglJam(w.dibuat)+'</span>'+
+      (w.tgl_lapor?'<span>Tgl '+(w.asal==="Komplain RS"?"komplain":"permintaan")+'</span><span>'+tgl2(w.tgl_lapor)+'</span>':'')+
+      (w.tgl_kunjungan?'<span>Tgl kunjungan</span><span>'+tgl2(w.tgl_kunjungan)+'</span>':'')+
+      '<span>Fase</span><span>'+esc(w.fase||"-")+'</span><span>Pekerjaan</span><span>'+esc((w.jenis||[]).join(", "))+'</span>'+
+      '<span>Asal</span><span>'+esc(w.asal)+(w.prioritas?" · "+esc(w.prioritas):"")+'</span>'+
+      '<span>Alat</span><span>'+esc(ringkasAlat(us))+'</span><span>Pelapor</span><span>'+esc(w.pelapor||"-")+'</span>'+
+      '<span>Keterangan</span><span>'+esc(w.cerita||"-")+'</span><span>Teknisi</span><span>'+esc(teknisi)+'</span>'+
+      (w.hasil?'<span>Hasil</span><span>'+esc(w.hasil)+'</span><span>Catatan</span><span>'+esc(w.catatan||"-")+'</span><span>Diketahui</span><span>'+esc(w.petugas_rs||"-")+'</span><span>Selesai</span><span>'+tglJam(w.selesai_pada)+'</span>'+(w.tgl_bast?'<span>Tgl BAST</span><span>'+tgl2(w.tgl_bast)+'</span>':'')+(w.tindak_lanjut?'<span>Tindak lanjut</span><span>Perlu</span>':''):'')+
+      '</div></div>'+
+      (w.catatan_kembali&&w.status==="Dikerjakan"?'<div class="card" style="border-color:#F3B8B0"><b style="color:var(--red)">Dikembalikan untuk dilengkapi</b><div>'+esc(w.catatan_kembali)+'</div></div>':'')+
+      (w.status==="Ditutup"?'<div class="card"><b>Ditutup</b> <span class="mut">'+tglJam(w.diverif_pada)+'</span><div>'+esc(w.catatan_verif||"Tanpa catatan.")+'</div></div>':'')+
+      '<h2>Ringkasan untuk grup WA</h2><pre id="wa"></pre><button class="btn s" id="salinWA">Salin pesan WA</button><div class="okb" id="okWA" hidden></div>'+
+      htmlFoto(F)+
+      (w.status==="Dikerjakan"?'<button class="btn" id="selesaikan">Selesaikan pekerjaan</button>':'')+
+      (w.status==="Menunggu verifikasi"?(bolehVerif()?'<h2>Verifikasi</h2><div class="card"><label for="cv" style="margin-top:0">Catatan verifikasi</label><textarea id="cv" placeholder="Wajib diisi bila dikembalikan"></textarea><div class="err" id="errV"></div><button class="btn" id="tutupWO">Tutup work order</button><button class="btn s" id="kembaliWO">Kembalikan ke teknisi</button></div>':'<p class="mut">Menunggu verifikasi oleh operasi.</p>'):'')+
+      '<button class="btn s" id="keDaftar">'+(asal==="verif"?"Kembali ke daftar verifikasi":"Kembali ke daftar work order")+'</button>';
+    const balik=p=>asal==="verif"?layarVerif(p):layarWOList(p);
+    $("#wa").textContent=wa;$("#keDaftar").onclick=()=>balik();
+    const aksiV=async(tutup)=>{const E=$("#errV"),c=$("#cv").value.trim(),B=tutup?$("#tutupWO"):$("#kembaliWO");
+      if(!tutup&&!c){E.textContent="Tulis dulu apa yang harus dilengkapi teknisi.";return}
+      $("#tutupWO").disabled=true;$("#kembaliWO").disabled=true;E.textContent="";
+      try{const isi=tutup?{status:"Ditutup",catatan_verif:c||null}:{status:"Dikerjakan",catatan_kembali:c};
+        const u=await sb.from("work_order").update(isi).eq("id",w.id).eq("status","Menunggu verifikasi").select("id").maybeSingle();
+        if(u.error)throw u.error;if(!u.data)throw new Error("Work order ini sudah tidak berstatus Menunggu verifikasi. Muat ulang untuk melihat keadaannya.");
+        await balik(w.nomor+(tutup?" ditutup.":" dikembalikan ke teknisi."));
+      }catch(e){E.textContent=pesanGalat(e);$("#tutupWO").disabled=false;$("#kembaliWO").disabled=false}};
+    if($("#tutupWO")){$("#tutupWO").onclick=()=>aksiV(true);$("#kembaliWO").onclick=()=>aksiV(false)}
+    if($("#selesaikan"))$("#selesaikan").onclick=()=>layarSelesai(w,us);
+    $("#salinWA").onclick=async()=>{const ok=$("#okWA");ok.hidden=false;
+      try{await navigator.clipboard.writeText(wa);ok.textContent="Tersalin. Buka WhatsApp lalu tempel di grup."}
+      catch(e){try{const g=document.createRange();g.selectNodeContents($("#wa"));const s=getSelection();s.removeAllRanges();s.addRange(g)}catch(_){}ok.textContent="Teks sudah diblok; tekan lama lalu pilih Salin."}};
+  }catch(e){v.innerHTML='<div class="err">'+esc(pesanGalat(e))+'</div><button class="btn s" id="keDaftar">Kembali</button>';$("#keDaftar").onclick=()=>asal==="verif"?layarVerif():layarWOList()}
+}
+// ---------- foto: perkecil, unggah, tampilkan --------------------------
+const HASIL=["Selesai","Dipantau","Menunggu part","Eskalasi ke prinsipal","Bukan masalah alat"];
+const HINT={"Selesai":"Tuntas, tidak perlu dipantau lagi.","Dipantau":"Sudah ditangani, masih dipantau beberapa hari.","Menunggu part":"Belum tuntas karena menunggu suku cadang.","Eskalasi ke prinsipal":"Tidak bisa ditangani sendiri, diteruskan ke prinsipal.","Bukan masalah alat":"Penyebabnya di luar alat, misalnya instalasi RS atau cara pakai."};
+async function kecilkan(file){
+  try{
+    const bmp=await createImageBitmap(file),S=1600,k=Math.min(1,S/Math.max(bmp.width,bmp.height));
+    const c=document.createElement("canvas");c.width=Math.round(bmp.width*k);c.height=Math.round(bmp.height*k);
+    c.getContext("2d").drawImage(bmp,0,0,c.width,c.height);
+    const b=await new Promise(r=>c.toBlob(r,"image/jpeg",0.8));
+    return b||file;
+  }catch(e){return file}
+}
+async function unggahFoto(woId,files,jenis){
+  let n=0;
+  for(const f of files){
+    const blob=await kecilkan(f),path=woId+"/"+Date.now()+"-"+(n++)+"-"+Math.random().toString(36).slice(2,7)+".jpg";
+    const u=await sb.storage.from("bukti").upload(path,blob,{contentType:"image/jpeg",upsert:false});
+    if(u.error)throw new Error("Foto gagal diunggah: "+(u.error.message||u.error));
+    const l=await sb.from("lampiran").insert({wo_id:woId,jenis:jenis,path:path});
+    if(l.error)throw l.error;
+  }
+  return n;
+}
+async function fotoWO(woId){
+  const l=await sb.from("lampiran").select("id,jenis,path,dibuat").eq("wo_id",woId).order("dibuat");
+  if(l.error||!(l.data||[]).length)return [];
+  const s=await sb.storage.from("bukti").createSignedUrls(l.data.map(x=>x.path),3600);
+  const peta={};((s&&s.data)||[]).forEach(x=>{if(x&&x.signedUrl)peta[x.path]=x.signedUrl});
+  return l.data.map(x=>Object.assign({url:peta[x.path]||""},x));
+}
+function htmlFoto(F){
+  if(!F.length)return "";
+  const g={};F.forEach(x=>(g[x.jenis]=g[x.jenis]||[]).push(x));
+  return '<h2>Foto</h2><div class="card">'+Object.keys(g).map(j=>'<div class="mut" style="font-weight:600;margin-top:4px">'+esc(j)+' ('+g[j].length+')</div><div class="thumbs">'+g[j].map(x=>x.url?'<a href="'+esc(x.url)+'" target="_blank" rel="noopener"><img src="'+esc(x.url)+'" alt="'+esc(j)+'" loading="lazy"></a>':'<span class="mut">(foto tidak bisa dimuat)</span>').join("")+'</div>').join("")+'</div>';
+}
+// kotak pilih foto yang tetap ingat pilihannya walau layar digambar ulang
+function kotakFoto(id,daftar,label){
+  return '<label for="'+id+'">'+esc(label)+'</label><input type="file" id="'+id+'" accept="image/*" multiple>'+
+    (daftar.length?'<div class="mut" style="margin-top:6px">'+daftar.length+' foto dipilih: '+esc(daftar.map(f=>f.name||"foto").join(", ").slice(0,90))+' <button type="button" class="lnk" data-hapusfoto="'+id+'">hapus semua</button></div>':'');
+}
+function pasangFoto(id,daftar,ulang){
+  const el=$("#"+id);if(el)el.onchange=()=>{for(const f of el.files)daftar.push(f);ulang()};
+  const h=v.querySelector('[data-hapusfoto="'+id+'"]');if(h)h.onclick=()=>{daftar.length=0;ulang()};
+}
+// ---------- selesaikan pekerjaan ----------------------------------------
+async function layarSelesai(w,us){
+  judul("Selesaikan "+w.nomor);window.scrollTo(0,0);
+  const inst=(w.jenis||[]).includes("Instalasi");
+  const d={hasil:"",catatan:"",petugas:"",tindak:false,bast:"",bukti:[],ba:[],pos:null};
+  try{if(navigator.geolocation)navigator.geolocation.getCurrentPosition(p=>{d.pos={lat:p.coords.latitude,lng:p.coords.longitude};const g=$("#gps");if(g)g.textContent="Lokasi tercatat."},()=>{const g=$("#gps");if(g)g.textContent="Lokasi tidak tercatat (izin lokasi tidak diberikan)."},{timeout:10000,maximumAge:60000})}catch(e){}
+  const simpanIsian=()=>{const g=i=>$(i)?$(i).value:null;
+    if(g("#ctt")!=null)d.catatan=g("#ctt");if(g("#ptg")!=null)d.petugas=g("#ptg");if(g("#bast")!=null)d.bast=g("#bast");if($("#tdk"))d.tindak=$("#tdk").checked};
+  const gambar=()=>{
+    v.innerHTML='<div class="card"><b>'+esc(rsNama(w.customer_id))+(w.departemen?" - "+esc(w.departemen):"")+'</b><div class="mut">'+esc((w.jenis||[]).join(", "))+' · '+esc(ringkasAlat(us))+'</div></div>'+
+      '<label>Hasil pekerjaan</label>'+chips(HASIL,d.hasil,"hasil")+(d.hasil?'<div class="mut" style="margin-top:6px">'+esc(HINT[d.hasil])+'</div>':'')+
+      '<label for="ctt">Catatan pekerjaan</label><textarea id="ctt" placeholder="Apa yang dikerjakan, temuan, saran">'+esc(d.catatan)+'</textarea>'+
+      '<label for="ptg">Petugas RS yang mengetahui</label><input type="text" id="ptg" placeholder="Nama dan jabatan" value="'+esc(d.petugas)+'">'+
+      kotakFoto("fBukti",d.bukti,"Foto bukti (wajib): bersama petugas RS atau bersama alat")+
+      (inst?'<label for="bast">Tanggal BAST (wajib bila hasilnya Selesai)</label><input type="date" id="bast" value="'+esc(d.bast)+'"><div class="mut">Tanggal ini menjadi awal garansi semua alat di work order ini setelah diverifikasi.</div>'+
+            kotakFoto("fBA",d.ba,"Foto BAST atau berita acara yang sudah ditandatangani"):
+            kotakFoto("fBA",d.ba,"Foto berita acara yang sudah ditandatangani (bila ada)"))+
+      '<label class="check"><input type="checkbox" id="tdk"'+(d.tindak?" checked":"")+'> Perlu tindak lanjut</label>'+
+      '<div class="mut" id="gps" style="margin-top:10px">'+(d.pos?"Lokasi tercatat.":"Mencatat lokasi...")+'</div>'+
+      '<div class="err" id="err"></div><button class="btn" id="kirim">Kirim untuk diverifikasi</button><button class="btn s" id="batalS">Batal</button>';
+    v.querySelectorAll("[data-hasil]").forEach(b=>b.onclick=()=>{simpanIsian();d.hasil=b.dataset.hasil;gambar()});
+    const ulang=()=>{simpanIsian();gambar()};
+    pasangFoto("fBukti",d.bukti,ulang);pasangFoto("fBA",d.ba,ulang);
+    $("#batalS").onclick=()=>layarWODetail(w.id);
+    $("#kirim").onclick=async()=>{
+      simpanIsian();const E=$("#err"),B=$("#kirim");
+      if(!d.hasil){E.textContent="Pilih hasil pekerjaan.";return}
+      if(!d.petugas.trim()){E.textContent="Isi nama petugas RS yang mengetahui.";return}
+      if(!d.bukti.length){E.textContent="Foto bukti wajib dilampirkan, minimal satu.";return}
+      if(inst&&d.hasil==="Selesai"){if(!d.bast){E.textContent="Isi tanggal BAST.";return}if(!d.ba.length){E.textContent="Lampirkan foto BAST yang sudah ditandatangani.";return}}
+      B.disabled=true;E.textContent="";
+      try{
+        B.textContent="Mengunggah foto...";
+        await unggahFoto(w.id,d.bukti,"Bukti");d.bukti.length=0;
+        if(d.ba.length){await unggahFoto(w.id,d.ba,"Berita acara");d.ba.length=0}
+        B.textContent="Menyimpan...";
+        const isi={status:"Menunggu verifikasi",hasil:d.hasil,catatan:d.catatan.trim()||null,petugas_rs:d.petugas.trim(),tindak_lanjut:d.tindak,catatan_kembali:null};
+        if(inst&&d.bast)isi.tgl_bast=d.bast;if(d.pos){isi.lat=d.pos.lat;isi.lng=d.pos.lng}
+        const u=await sb.from("work_order").update(isi).eq("id",w.id).eq("status","Dikerjakan").select("id").maybeSingle();
+        if(u.error)throw u.error;if(!u.data)throw new Error("Work order ini sudah tidak berstatus Dikerjakan. Muat ulang untuk melihat keadaannya.");
+        await layarWODetail(w.id,"Terkirim untuk diverifikasi.");
+      }catch(e){E.textContent=pesanGalat(e)+" Isian masih ada, silakan coba lagi.";B.disabled=false;B.textContent="Kirim untuk diverifikasi"}
+    };
+  };
+  gambar();
+}
+
+async function layarWOBaru(pre){
+  judul("Lapor pekerjaan baru");window.scrollTo(0,0);
+  if(!RS.length){v.innerHTML='<div class="err">Belum ada rumah sakit di daftar.</div>'+tombolBeranda;pasangBeranda();return}
+  const d=Object.assign({rs:RS[0].id,dept:"",deptx:"",alat:[],jenis:[],asal:"Komplain RS",prio:"",pelapor:"",cerita:"",q:"",tl:hariIni(),tk:hariIni(),baru:[],add:false,foto:[]},pre||{});
+  let U=[];
+  const muat=async()=>{const r=await sb.from("alat").select("id,nama,merk,tipe,sn,departemen").eq("customer_id",d.rs).order("departemen").order("sn").limit(1000);if(r.error)throw r.error;U=r.data||[]};
+  const simpanIsian=()=>{const g=i=>$(i)?$(i).value:null;
+    if(g("#deptx")!=null)d.deptx=g("#deptx");if(g("#plp")!=null)d.pelapor=g("#plp");if(g("#crt")!=null)d.cerita=g("#crt");
+    if(g("#tl")!=null)d.tl=g("#tl");if(g("#tk")!=null)d.tk=g("#tk");if(g("#q")!=null)d.q=g("#q")};
+  const cocok=()=>{const q=(d.q||"").trim().toLowerCase();
+    return U.filter(u=>(!d.dept||u.departemen===d.dept||d.alat.includes(u.id))&&(!q||[u.sn,u.nama,u.merk,u.tipe].some(x=>String(x||"").toLowerCase().includes(q))))};
+  const gambarUnit=()=>{const L=cocok(),el=$("#ulist");if(!el)return;
+    el.innerHTML='<div class="mut" style="margin:6px 0">'+d.alat.length+' alat dipilih'+(d.baru.length?', '+d.baru.length+' alat baru':'')+'. Menampilkan '+Math.min(L.length,60)+' dari '+L.length+'.</div>'+
+      (L.length?'<div class="units">'+L.slice(0,60).map(u=>'<label class="u"><input type="checkbox" data-u="'+u.id+'"'+(d.alat.includes(u.id)?" checked":"")+'><span><b>'+esc(u.sn||"tanpa SN")+'</b> '+esc([u.nama,u.tipe].filter(Boolean).join(" "))+(u.departemen?' · '+esc(u.departemen):'')+'</span></label>').join("")+'</div>':'<p class="mut">Tidak ada alat yang cocok.</p>')+
+      (L.length?'<div class="row" style="margin-top:8px"><button class="btn s" id="semua" style="margin:0">Pilih semua yang tampil</button><button class="btn s" id="kosong" style="margin:0">Kosongkan</button></div>':'');
+    el.querySelectorAll("[data-u]").forEach(c=>c.onchange=()=>{const id=Number(c.dataset.u);if(c.checked){if(!d.alat.includes(id))d.alat.push(id)}else d.alat=d.alat.filter(x=>x!==id);gambarUnit()});
+    if($("#semua"))$("#semua").onclick=()=>{L.slice(0,60).forEach(u=>{if(!d.alat.includes(u.id))d.alat.push(u.id)});gambarUnit()};
+    if($("#kosong"))$("#kosong").onclick=()=>{d.alat=[];gambarUnit()};
+  };
+  const gambar=()=>{
+    const depts=[...new Set(U.map(u=>u.departemen).filter(Boolean))];
+    v.innerHTML='<label for="rsw" style="margin-top:0">Rumah sakit</label><select id="rsw">'+RS.map(r=>'<option value="'+r.id+'"'+(r.id==d.rs?" selected":"")+'>'+esc(r.nama)+'</option>').join("")+'</select>'+
+      '<label>Departemen</label>'+(depts.length?chips(depts,d.dept,"dept"):'')+'<input type="text" id="deptx" placeholder="'+(depts.length?"atau ketik departemen lain":"contoh: ICU")+'" value="'+esc(d.deptx)+'" style="margin-top:8px">'+
+      '<label for="q">Alat (cari nomor seri atau tipe)</label><input type="search" id="q" placeholder="contoh: 1704 atau Perfusor" autocomplete="off" value="'+esc(d.q)+'"><div id="ulist"></div>'+
+      (d.baru.length?'<div class="card">'+d.baru.map((b,i)=>'<div class="rowb"><span><b>Baru:</b> '+esc([b.nama,b.merk,b.tipe].filter(Boolean).join(" "))+(b.sn?' · SN '+esc(b.sn):'')+'</span><button class="lnk" data-hb="'+i+'">hapus</button></div>').join("")+'</div>':'')+
+      (d.add?'<div class="card"><b>Alat belum ada di daftar</b><label for="bn">Nama alat</label><input type="text" id="bn" placeholder="contoh: Patient Monitor"><label for="bm">Merk</label><input type="text" id="bm"><label for="bt">Tipe</label><input type="text" id="bt"><label for="bs">Nomor seri</label><input type="text" id="bs" autocapitalize="characters"><div class="err" id="berr"></div><button class="btn s" id="btambah">Tambahkan alat ini</button></div>'
+            :'<button class="btn s" id="badd">+ Alat belum ada di daftar</button>')+
+      '<div class="row"><div><label for="tl">Tanggal '+(d.asal==="Komplain RS"?"komplain":"permintaan")+'</label><input type="date" id="tl" value="'+esc(d.tl)+'"></div><div><label for="tk">Tanggal kunjungan</label><input type="date" id="tk" value="'+esc(d.tk)+'"></div></div>'+
+      '<label>Jenis pekerjaan (boleh lebih dari satu)</label>'+chips(JENIS,d.jenis,"jenis",true)+
+      '<label>Asal pekerjaan</label>'+chips(ASAL,d.asal,"asal")+
+      '<label>Prioritas</label>'+chips(PRIO,d.prio,"prio")+
+      '<label for="plp">Pelapor atau kontak RS</label><input type="text" id="plp" placeholder="Nama dan jabatan" value="'+esc(d.pelapor)+'">'+
+      '<label for="crt">Cerita singkat</label><textarea id="crt" placeholder="Ketik atau tempel dari WA">'+esc(d.cerita)+'</textarea>'+
+      kotakFoto("fAwal",d.foto,"Foto (bila ada): kondisi alat, pesan galat, label")+
+      '<div class="err" id="err"></div><button class="btn" id="buat">Buat work order</button><button class="btn s" id="batalWO">Batal</button>';
+    gambarUnit();
+    $("#rsw").onchange=async e=>{simpanIsian();d.rs=Number(e.target.value);d.dept="";d.alat=[];try{await muat()}catch(x){U=[]}gambar()};
+    $("#q").oninput=()=>{d.q=$("#q").value;gambarUnit()};
+    const ulang=f=>b=>b.onclick=()=>{simpanIsian();f(b);gambar()};
+    v.querySelectorAll("[data-dept]").forEach(ulang(b=>{d.dept=d.dept===b.dataset.dept?"":b.dataset.dept}));
+    v.querySelectorAll("[data-jenis]").forEach(ulang(b=>{const j=b.dataset.jenis;d.jenis=d.jenis.includes(j)?d.jenis.filter(x=>x!==j):d.jenis.concat(j)}));
+    v.querySelectorAll("[data-asal]").forEach(ulang(b=>{d.asal=b.dataset.asal}));
+    v.querySelectorAll("[data-prio]").forEach(ulang(b=>{d.prio=d.prio===b.dataset.prio?"":b.dataset.prio}));
+    v.querySelectorAll("[data-hb]").forEach(ulang(b=>{d.baru.splice(Number(b.dataset.hb),1)}));
+    if($("#badd"))$("#badd").onclick=()=>{simpanIsian();d.add=true;gambar();$("#bn").focus()};
+    if($("#btambah"))$("#btambah").onclick=()=>{const n=$("#bn").value.trim(),s=$("#bs").value.trim();
+      if(!n){$("#berr").textContent="Nama alat wajib diisi.";return}if(!s){$("#berr").textContent="Nomor seri wajib diisi.";return}
+      simpanIsian();d.baru.push({nama:n,merk:$("#bm").value.trim(),tipe:$("#bt").value.trim(),sn:s});d.add=false;gambar()};
+    pasangFoto("fAwal",d.foto,()=>{simpanIsian();gambar()});
+    $("#batalWO").onclick=()=>layarWOList();
+    $("#buat").onclick=async()=>{
+      simpanIsian();const E=$("#err"),B=$("#buat"),dept=(d.deptx||"").trim()||d.dept,cerita=(d.cerita||"").trim();
+      if(!dept){E.textContent="Pilih atau ketik departemen.";return}
+      if(!d.jenis.length){E.textContent="Pilih minimal satu jenis pekerjaan.";return}
+      if(!cerita){E.textContent="Tulis cerita singkat pekerjaannya.";return}
+      B.disabled=true;B.textContent="Menyimpan...";E.textContent="";
+      try{
+        const ids=d.alat.slice();
+        while(d.baru.length){const b=d.baru[0];
+          const a=await sb.from("alat").insert({customer_id:d.rs,nama:b.nama,merk:b.merk||null,tipe:b.tipe||null,sn:b.sn||null,departemen:dept,status:"Terpasang"}).select("id").maybeSingle();
+          if(a.error)throw a.error;ids.push(a.data.id);d.alat.push(a.data.id);d.baru.shift()}
+        const w=await sb.from("work_order").insert({customer_id:d.rs,departemen:dept,jenis:d.jenis,asal:d.asal,prioritas:d.prio||null,fase:faseDari(d.jenis,d.asal),pelapor:(d.pelapor||"").trim()||null,cerita:cerita,tgl_lapor:d.tl||null,tgl_kunjungan:d.tk||null}).select("id,nomor").maybeSingle();
+        if(w.error)throw w.error;if(!w.data)throw new Error("Work order tidak tersimpan.");
+        let pesan="Work order "+w.data.nomor+" dibuat.";
+        if(ids.length){const x=await sb.from("wo_alat").insert(ids.map(i=>({wo_id:w.data.id,alat_id:i})));if(x.error)pesan+=" Catatan: daftar alat gagal ditautkan ("+pesanGalat(x.error)+").";}
+        if(d.foto.length){B.textContent="Mengunggah foto...";try{await unggahFoto(w.data.id,d.foto,"Foto awal")}catch(x){pesan+=" Catatan: "+pesanGalat(x)+" Kirim fotonya lewat grup WA."}}
+        await layarWODetail(w.data.id,pesan);
+      }catch(e){E.textContent=pesanGalat(e);B.disabled=false;B.textContent="Buat work order"}
+    };
+  };
+  v.innerHTML='<p class="mut">Memuat daftar alat...</p>';
+  try{await muat()}catch(e){U=[]}
+  gambar();
 }
 
 async function bukaKode(k){
@@ -178,24 +502,24 @@ function teksProgres(p){
   const t=p.target||0,n=p.terdaftar||0,pct=t?Math.round(n*100/t):null,hi=hariIni();
   const hariIniN=(p.per_hari.find(h=>h.tgl===hi)||{n:0}).n;
   let s="*Progres instalasi "+p.nomor+"*\n"+p.rs+"\n"+
-    "Teregister: "+n+(t?" dari "+t+" unit ("+pct+"%)":" unit")+"\n"+(t?"Sisa: "+Math.max(t-n,0)+" unit\n":"")+
+    "Terpasang: "+n+(t?" dari "+t+" unit ("+pct+"%)":" unit")+"\n"+(t?"Sisa: "+Math.max(t-n,0)+" unit\n":"")+
     "Hari ini: "+hariIniN+" unit\n";
   if(p.per_hari.length)s+="\nPer hari:\n"+p.per_hari.map(h=>"- "+tglPendek(h.tgl)+": "+h.n).join("\n")+"\n";
   if(p.per_tipe.length)s+="\nPer tipe:\n"+p.per_tipe.map(x=>"- "+x.tipe+": "+x.n).join("\n")+"\n";
   if(p.per_lokasi.length)s+="\nPer departemen:\n"+p.per_lokasi.map(x=>"- "+x.lokasi+": "+x.n).join("\n")+"\n";
-  s+="\nCatatan: angka ini menghitung unit yang sudah ditempel stiker dan diregister.\nPer "+new Date().toLocaleString("id-ID",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit",timeZone:"Asia/Jakarta"})+" WIB";
+  s+="\nCatatan: angka ini menghitung unit yang sudah tercatat terpasang di sistem.\nPer "+new Date().toLocaleString("id-ID",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit",timeZone:"Asia/Jakarta"})+" WIB";
   return s;
 }
 async function muatProgres(){
   const el=$("#pwo");if(!el)return;
   try{
     const r=await sb.rpc("progres_instalasi");if(r.error)throw r.error;
-    const P=(r.data||[]).filter(p=>UJI||!rsUji(p.rs));
+    const P=(r.data||[]).filter(p=>UJI?rsUji(p.rs):!rsUji(p.rs));
     if(!P.length){el.innerHTML='<div class="card"><p class="mut">Tidak ada work order instalasi yang sedang berjalan.</p></div>';return}
     el.innerHTML=P.map((p,i)=>{const t=p.target||0,n=p.terdaftar||0,pct=t?Math.min(100,Math.round(n*100/t)):0;
       return '<div class="card"><b>'+esc(p.nomor)+'</b> <span class="mut">'+esc(p.rs)+'</span>'+
         '<div class="bar"><i style="width:'+pct+'%"></i></div>'+
-        '<div><b>'+n+'</b>'+(t?' dari '+t+' unit teregister ('+pct+'%)':' unit teregister')+'</div>'+
+        '<div><b>'+n+'</b>'+(t?' dari '+t+' unit terpasang ('+pct+'%)':' unit terpasang')+'</div>'+
         (p.per_lokasi.length?'<div class="mut">'+p.per_lokasi.map(x=>esc(x.lokasi)+": "+x.n).join(" · ")+'</div>':'')+
         '<button class="btn s" data-salin="'+i+'">Salin ringkasan untuk WA</button><div class="okb" id="ok'+i+'" hidden></div><pre id="tx'+i+'" hidden></pre></div>'}).join("");
     el.querySelectorAll("[data-salin]").forEach(b=>b.onclick=async()=>{
@@ -220,12 +544,22 @@ function layarAlat(a,pesan){
    '<span>Status</span><span>'+esc(a.status)+'</span>'+
    '<span>Tgl instal</span><span>'+tgl(a.tgl_instal)+'</span>'+
    '<span>Stiker dipasang</span><span>'+tgl(a.didaftar_pada)+'</span></div></div>'+
-   '<button class="btn s" id="ubah">Ubah lokasi atau nomor seri</button>'+
+   '<button class="btn" id="laporAlat">Lapor pekerjaan untuk alat ini</button><button class="btn s" id="ubah">Ubah lokasi atau nomor seri</button>'+
+   (bolehVerif()?'<div class="err" id="errL"></div><button class="lnk" id="lepas">Koreksi: lepaskan stiker ini dari alat (salah daftar)</button>':'')+
    '<h2>Stiker berikutnya</h2><div class="card"><p class="mut">Pindai stiker berikutnya dengan kamera HP, atau ketik angkanya:</p>'+
    '<div class="row"><input type="text" id="kd" inputmode="numeric" placeholder="angka stiker"><button class="btn" id="buka" style="margin:0;flex:0 0 90px">Buka</button></div><div class="err" id="err"></div></div>';
   const buka=()=>{const k=normKode($("#kd").value);if(!kodeSah(k)){$("#err").textContent="Kode tidak dikenali.";return}location.href=location.pathname+"?u="+k};
   $("#buka").onclick=buka;$("#kd").onkeydown=e=>{if(e.key==="Enter")buka()};
   $("#ubah").onclick=()=>layarIsi(a.kode_qr,a,true);
+  $("#laporAlat").onclick=()=>layarWOBaru({rs:a.customer_id,alat:[a.id],dept:a.departemen||"",q:a.sn||""});
+  if($("#lepas")){let yakin=false;$("#lepas").onclick=async()=>{const b=$("#lepas");
+    if(!yakin){yakin=true;b.textContent="Ketuk sekali lagi untuk melepas stiker "+a.kode_qr+" dari alat ini";return}
+    b.disabled=true;
+    try{const u=await sb.from("alat").update({kode_qr:null}).eq("id",a.id).eq("kode_qr",a.kode_qr).select("id").maybeSingle();
+      if(u.error)throw u.error;if(!u.data)throw new Error("Stiker sudah tidak terpasang pada alat ini.");
+      const k=a.kode_qr;judul(k);v.innerHTML='<div class="okb">Stiker '+esc(k)+' dilepas dari '+esc(alatTxt(a))+(a.sn?' SN '+esc(a.sn):'')+'. Stiker itu sekarang bisa didaftarkan ke alat yang benar.</div><button class="btn" id="daftarUlang">Daftarkan '+esc(k)+' ke alat lain</button>'+tombolBeranda;
+      pasangBeranda();$("#daftarUlang").onclick=()=>{location.href=location.pathname+"?u="+k};
+    }catch(e){$("#errL").textContent=pesanGalat(e);b.disabled=false;yakin=false;b.textContent="Koreksi: lepaskan stiker ini dari alat (salah daftar)"}}}
 }
 
 // ---------- stiker baru: pilih alat -----------------------------------
