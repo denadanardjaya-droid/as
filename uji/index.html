@@ -44,7 +44,8 @@ td.n,th.n{text-align:right}
 .check input{width:22px;height:22px}
 .uji{background:#FFF4CE;color:#6B4E00;border-bottom:1px solid #E8C96A;padding:8px 14px;font-size:13px;font-weight:600;text-align:center}
 .bar{height:10px;background:#E3E9EE;border-radius:99px;overflow:hidden;margin:8px 0}
-.bar i{display:block;height:100%;background:var(--ok)}
+.bar{display:flex}.bar i{display:block;height:100%;background:var(--ok)}.bar i.u{background:#9CCFB3}
+tr.sum th{border-top:2px solid var(--line)}td.rg{line-height:1.25}td.rg small{color:var(--mut)}
 .uji{position:sticky;top:48px;z-index:4}
 .tile{display:block;width:100%;text-align:left;background:#FFFEFB;border:1px solid var(--line);border-radius:14px;padding:18px 16px;margin:12px 0;color:var(--ink);font-size:16px}
 .tile b{display:block;font-size:18px;color:var(--navy);margin-bottom:4px}
@@ -73,7 +74,7 @@ pre{white-space:pre-wrap;font-family:inherit;font-size:14px;background:var(--chi
 <script>
 "use strict";
 // ---------------------------------------------------------------------
-// PT3D After-Sales - work order, foto, penyelesaian, verifikasi, stiker QR, progres (v7, 23 Nov 2026)
+// PT3D After-Sales - work order, foto, penyelesaian, verifikasi, stiker QR, progres (v8, 25 Nov 2026)
 // Kunci di bawah adalah kunci PUBLIK (publishable). Keamanan data dijaga
 // oleh login dan aturan akses (RLS) di database, bukan oleh kunci ini.
 // ---------------------------------------------------------------------
@@ -92,12 +93,26 @@ const UJI=/\/uji(\/|$)/.test(location.pathname);
 const rsUji=n=>/^RS UJI/i.test(n||"");
 const rsNama=id=>(RS.find(r=>r.id==id)||{}).nama||"-";
 const alatTxt=a=>[a.nama,a.merk,a.tipe].filter(Boolean).join(" ");
+const kunciSN=s=>String(s||"").replace(/\s/g,"").toUpperCase();
+const BELUM_PASANG=["Akan diinstal","Sudah uji fungsi"];
+const RUANG={};
+async function ruanganRS(cid){
+  if(RUANG[cid])return RUANG[cid];
+  try{const r=await sb.rpc("daftar_ruangan",{p_customer:cid});if(r.error||!Array.isArray(r.data))return [];RUANG[cid]=r.data;return r.data}catch(e){return []}
+}
+const samakanDept=(t,L)=>{t=String(t||"").trim();const k=t.toLowerCase();return (L||[]).find(x=>String(x).toLowerCase()===k)||t};
+async function snKembar(cid,sn,kecualiId){
+  try{let q=sb.from("alat").select("id,nama,merk,tipe,sn,departemen").eq("customer_id",cid).eq("sn_kunci",kunciSN(sn));
+    if(kecualiId!=null)q=q.neq("id",kecualiId);
+    const r=await q.limit(5);if(r.error)return [];return r.data||[]}catch(e){return []}
+}
+const bedaTipe=(o,tipe)=>!!(o.tipe&&tipe&&String(o.tipe).trim().toLowerCase()!==String(tipe).trim().toLowerCase());
 
 function pesanGalat(e){
   const m=(e&&(e.message||e.error_description))||String(e||"");
   if(/alat_kode_qr_unik/.test(m))return "Stiker ini sudah terdaftar pada alat lain. Muat ulang halaman untuk melihatnya.";
   if(/alat_merk_tipe_sn_unik/.test(m))return "Nomor seri ini sudah dipakai alat lain dengan merk dan tipe yang sama. Periksa lagi nomor serinya.";
-  if(/sudah terdaftar pada alat ini|Foto gagal diunggah|sudah tidak berstatus|wajib diisi|boleh menutup|harus diselesaikan/.test(m))return m;
+  if(/sudah terdaftar pada alat ini|sudah ada di daftar RS ini|Foto gagal diunggah|sudah tidak berstatus|wajib diisi|boleh menutup|harus diselesaikan/.test(m))return m;
   if(/row-level security|permission denied/i.test(m))return "Akun ini tidak punya izin untuk tindakan tersebut.";
   if(/Failed to fetch|NetworkError|Load failed/i.test(m))return "Tidak ada sambungan internet. Data BELUM tersimpan, coba lagi setelah sinyal ada.";
   return "Gagal: "+m;
@@ -170,7 +185,7 @@ async function layarBeranda(){
    '<button class="tile" id="mWO"><b>Work order</b><span>Daftar pekerjaan dan lapor pekerjaan baru</span></button>'+
    (bolehVerif()?'<button class="tile" id="mVR"><b>Verifikasi <span class="tag" id="nVR" hidden></span></b><span>Periksa pekerjaan yang sudah selesai, tutup atau kembalikan</span></button>':'')+
    '<button class="tile" id="mST"><b>Daftarkan stiker</b><span>Tempel stiker QR ke alat dan catat lokasinya</span></button>'+
-   '<button class="tile" id="mPR"><b>Progres instalasi</b><span>Jumlah unit terpasang per work order, salin ke WA</span></button>';
+   '<button class="tile" id="mPR"><b>Progres instalasi</b><span>Rencana, uji fungsi dan terpasang per ruangan, salin ke WA</span></button>';
   $("#mWO").onclick=()=>layarWOList();$("#mST").onclick=()=>layarStiker();$("#mPR").onclick=()=>layarProgres();
   if($("#mVR")){$("#mVR").onclick=()=>layarVerif();
     try{const r=await sb.from("work_order").select("id",{count:"exact",head:true}).in("customer_id",RS.map(x=>x.id)).eq("status","Menunggu verifikasi");
@@ -418,13 +433,13 @@ async function layarWOBaru(pre){
   judul("Lapor pekerjaan baru");window.scrollTo(0,0);
   if(!RS.length){v.innerHTML='<div class="err">Belum ada rumah sakit di daftar.</div>'+tombolBeranda;pasangBeranda();return}
   const d=Object.assign({rs:RS[0].id,dept:"",deptx:"",alat:[],jenis:[],asal:"Komplain RS",prio:"",pelapor:"",cerita:"",q:"",tl:hariIni(),tk:hariIni(),baru:[],add:false,foto:[]},pre||{});
-  let U=[];
-  const muat=async()=>{const r=await sb.from("alat").select("id,nama,merk,tipe,sn,departemen").eq("customer_id",d.rs).order("departemen").order("sn").limit(1000);if(r.error)throw r.error;U=r.data||[]};
+  let U=[],LR=[];
+  const muat=async()=>{LR=await ruanganRS(d.rs);const r=await sb.from("alat").select("id,nama,merk,tipe,sn,departemen").eq("customer_id",d.rs).order("departemen").order("sn").limit(1000);if(r.error)throw r.error;U=r.data||[]};
   const simpanIsian=()=>{const g=i=>$(i)?$(i).value:null;
     if(g("#deptx")!=null)d.deptx=g("#deptx");if(g("#plp")!=null)d.pelapor=g("#plp");if(g("#crt")!=null)d.cerita=g("#crt");
     if(g("#tl")!=null)d.tl=g("#tl");if(g("#tk")!=null)d.tk=g("#tk");if(g("#q")!=null)d.q=g("#q")};
-  const cocok=()=>{const q=(d.q||"").trim().toLowerCase();
-    return U.filter(u=>(!d.dept||u.departemen===d.dept||d.alat.includes(u.id))&&(!q||[u.sn,u.nama,u.merk,u.tipe].some(x=>String(x||"").toLowerCase().includes(q))))};
+  const cocok=()=>{const q=(d.q||"").trim().toLowerCase(),qk=kunciSN(q);
+    return U.filter(u=>(!d.dept||u.departemen===d.dept||d.alat.includes(u.id))&&(!q||[u.sn,u.nama,u.merk,u.tipe].some(x=>String(x||"").toLowerCase().includes(q))||(qk&&kunciSN(u.sn).includes(qk))))};
   const gambarUnit=()=>{const L=cocok(),el=$("#ulist");if(!el)return;
     el.innerHTML='<div class="mut" style="margin:6px 0">'+d.alat.length+' alat dipilih'+(d.baru.length?', '+d.baru.length+' alat baru':'')+'. Menampilkan '+Math.min(L.length,60)+' dari '+L.length+'.</div>'+
       (L.length?'<div class="units">'+L.slice(0,60).map(u=>'<label class="u"><input type="checkbox" data-u="'+u.id+'"'+(d.alat.includes(u.id)?" checked":"")+'><span><b>'+esc(u.sn||"tanpa SN")+'</b> '+esc([u.nama,u.tipe].filter(Boolean).join(" "))+(u.departemen?' · '+esc(u.departemen):'')+'</span></label>').join("")+'</div>':'<p class="mut">Tidak ada alat yang cocok.</p>')+
@@ -434,10 +449,12 @@ async function layarWOBaru(pre){
     if($("#kosong"))$("#kosong").onclick=()=>{d.alat=[];gambarUnit()};
   };
   const gambar=()=>{
-    const depts=[...new Set(U.map(u=>u.departemen).filter(Boolean))];
+    const depts=LR.length?LR.slice():[...new Set(U.map(u=>u.departemen).filter(Boolean))];
+    if(d.dept&&!depts.includes(d.dept))depts.push(d.dept);
     v.innerHTML='<label for="rsw" style="margin-top:0">Rumah sakit</label><select id="rsw">'+RS.map(r=>'<option value="'+r.id+'"'+(r.id==d.rs?" selected":"")+'>'+esc(r.nama)+'</option>').join("")+'</select>'+
-      '<label>Departemen</label>'+(depts.length?chips(depts,d.dept,"dept"):'')+'<input type="text" id="deptx" placeholder="'+(depts.length?"atau ketik departemen lain":"contoh: ICU")+'" value="'+esc(d.deptx)+'" style="margin-top:8px">'+
+      '<label>Departemen</label>'+(depts.length?chips(depts,d.dept,"dept"):'')+'<input type="text" id="deptx" placeholder="'+(depts.length?"ruangan belum ada di atas? ketik di sini":"contoh: ICU")+'" value="'+esc(d.deptx)+'" style="margin-top:8px">'+
       '<label for="q">Alat (cari nomor seri atau tipe)</label><input type="search" id="q" placeholder="contoh: 1704 atau Perfusor" autocomplete="off" value="'+esc(d.q)+'"><div id="ulist"></div>'+
+      (d.info?'<div class="okb" style="margin-top:8px">'+esc(d.info)+'</div>':'')+
       (d.baru.length?'<div class="card">'+d.baru.map((b,i)=>'<div class="rowb"><span><b>Baru:</b> '+esc([b.nama,b.merk,b.tipe].filter(Boolean).join(" "))+(b.sn?' · SN '+esc(b.sn):'')+'</span><button class="lnk" data-hb="'+i+'">hapus</button></div>').join("")+'</div>':'')+
       (d.add?'<div class="card"><b>Alat belum ada di daftar</b><label for="bn">Nama alat</label><input type="text" id="bn" placeholder="contoh: Patient Monitor"><label for="bm">Merk</label><input type="text" id="bm"><label for="bt">Tipe</label><input type="text" id="bt"><label for="bs">Nomor seri</label><input type="text" id="bs" autocapitalize="characters"><div class="err" id="berr"></div><button class="btn s" id="btambah">Tambahkan alat ini</button></div>'
             :'<button class="btn s" id="badd">+ Alat belum ada di daftar</button>')+
@@ -461,11 +478,16 @@ async function layarWOBaru(pre){
     if($("#badd"))$("#badd").onclick=()=>{simpanIsian();d.add=true;gambar();$("#bn").focus()};
     if($("#btambah"))$("#btambah").onclick=()=>{const n=$("#bn").value.trim(),s=$("#bs").value.trim();
       if(!n){$("#berr").textContent="Nama alat wajib diisi.";return}if(!s){$("#berr").textContent="Nomor seri wajib diisi.";return}
-      simpanIsian();d.baru.push({nama:n,merk:$("#bm").value.trim(),tipe:$("#bt").value.trim(),sn:s});d.add=false;gambar()};
+      const tp=$("#bt").value.trim(),ada=U.filter(u=>u.sn&&kunciSN(u.sn)===kunciSN(s)&&!bedaTipe(u,tp))[0];
+      simpanIsian();
+      if(ada){if(!d.alat.includes(ada.id))d.alat.push(ada.id);d.q="";d.add=false;
+        d.info="Nomor seri "+ada.sn+" sudah ada di daftar: "+[ada.nama,ada.tipe].filter(Boolean).join(" ")+(ada.departemen?" ("+ada.departemen+")":"")+". Alat itu yang dipilih, tidak dibuat baru.";gambar();return}
+      if(d.baru.some(b=>kunciSN(b.sn)===kunciSN(s)&&!bedaTipe(b,tp))){$("#berr").textContent="Nomor seri ini sudah Anda tambahkan.";return}
+      d.info="";d.baru.push({nama:n,merk:$("#bm").value.trim(),tipe:tp,sn:s});d.add=false;gambar()};
     pasangFoto("fAwal",d.foto,()=>{simpanIsian();gambar()});
     $("#batalWO").onclick=()=>layarWOList();
     $("#buat").onclick=async()=>{
-      simpanIsian();const E=$("#err"),B=$("#buat"),dept=(d.deptx||"").trim()||d.dept,cerita=(d.cerita||"").trim();
+      simpanIsian();const E=$("#err"),B=$("#buat"),dept=samakanDept(d.deptx,LR)||d.dept,cerita=(d.cerita||"").trim();
       if(!dept){E.textContent="Pilih atau ketik departemen.";return}
       if(!d.jenis.length){E.textContent="Pilih minimal satu jenis pekerjaan.";return}
       if(!cerita){E.textContent="Tulis cerita singkat pekerjaannya.";return}
@@ -498,16 +520,24 @@ async function bukaKode(k){
 
 // ---------- progres work order instalasi ------------------------------
 const tglPendek=d=>new Date(d+"T00:00:00+07:00").toLocaleDateString("id-ID",{weekday:"short",day:"numeric",month:"short",timeZone:"Asia/Jakarta"});
+const angkaProgres=p=>{const t=p.target||0,baru=p.terpasang!=null,pas=baru?p.terpasang:(p.terdaftar||0),uji=baru?(p.uji||0):0;
+  return {t,pas,uji,lolos:pas+uji,pct:t?Math.min(100,Math.round(pas*100/t)):0,pctU:t?Math.min(100,Math.round((pas+uji)*100/t)):0,R:p.per_ruangan||[]}};
+const tipePendek=t=>String(t||"").split(" ")[0];
+function ruangGabung(R){const m=[];R.forEach(x=>{let g=m.find(y=>y.ruangan===x.ruangan);if(!g){g={ruangan:x.ruangan,isi:[]};m.push(g)}g.isi.push(x)});return m}
 function teksProgres(p){
-  const t=p.target||0,n=p.terdaftar||0,pct=t?Math.round(n*100/t):null,hi=hariIni();
-  const hariIniN=(p.per_hari.find(h=>h.tgl===hi)||{n:0}).n;
+  const a=angkaProgres(p),hi=hariIni();
   let s="*Progres instalasi "+p.nomor+"*\n"+p.rs+"\n"+
-    "Terpasang: "+n+(t?" dari "+t+" unit ("+pct+"%)":" unit")+"\n"+(t?"Sisa: "+Math.max(t-n,0)+" unit\n":"")+
-    "Hari ini: "+hariIniN+" unit\n";
-  if(p.per_hari.length)s+="\nPer hari:\n"+p.per_hari.map(h=>"- "+tglPendek(h.tgl)+": "+h.n).join("\n")+"\n";
-  if(p.per_tipe.length)s+="\nPer tipe:\n"+p.per_tipe.map(x=>"- "+x.tipe+": "+x.n).join("\n")+"\n";
-  if(p.per_lokasi.length)s+="\nPer departemen:\n"+p.per_lokasi.map(x=>"- "+x.lokasi+": "+x.n).join("\n")+"\n";
-  s+="\nCatatan: angka ini menghitung unit yang sudah tercatat terpasang di sistem.\nPer "+new Date().toLocaleString("id-ID",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit",timeZone:"Asia/Jakarta"})+" WIB";
+    "Terpasang di ruangan: "+a.pas+(a.t?" dari "+a.t+" unit ("+a.pct+"%)":" unit")+"\n";
+  if(a.uji)s+="Sudah uji fungsi: "+a.lolos+" unit ("+a.uji+" belum di ruangan)\n";
+  if(a.t)s+=(a.uji?"Belum uji fungsi: ":"Sisa: ")+Math.max(a.t-a.lolos,0)+" unit\n";
+  if(a.R.length)s+="\nPer ruangan (rencana / uji fungsi / terpasang):\n"+ruangGabung(a.R).map(g=>"- "+g.ruangan+": "+g.isi.map(x=>tipePendek(x.tipe)+" "+x.rencana+"/"+x.uji+"/"+x.terpasang).join(", ")).join("\n")+"\n";
+  else{
+    if(p.per_tipe.length)s+="\nPer tipe:\n"+p.per_tipe.map(x=>"- "+x.tipe+": "+x.n).join("\n")+"\n";
+    if(p.per_lokasi.length)s+="\nPer ruangan:\n"+p.per_lokasi.map(x=>"- "+x.lokasi+": "+x.n).join("\n")+"\n";
+  }
+  if(p.per_hari.length){const hn=(p.per_hari.find(h=>h.tgl===hi)||{n:0}).n;s+="\nStiker terdaftar: "+p.per_hari.reduce((n,h)=>n+h.n,0)+" unit (hari ini "+hn+")\n"}
+  if(a.R.length&&p.rencana_total&&a.t>p.rencana_total)s+="\nRencana ruangan dari RS baru mencakup "+p.rencana_total+" dari "+a.t+" unit.\n";
+  s+="\nCatatan: terpasang = sudah diserahkan ke ruangan. Uji fungsi = lolos uji, bisa masih disimpan.\nPer "+new Date().toLocaleString("id-ID",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit",timeZone:"Asia/Jakarta"})+" WIB";
   return s;
 }
 async function muatProgres(){
@@ -516,11 +546,18 @@ async function muatProgres(){
     const r=await sb.rpc("progres_instalasi");if(r.error)throw r.error;
     const P=(r.data||[]).filter(p=>UJI?rsUji(p.rs):!rsUji(p.rs));
     if(!P.length){el.innerHTML='<div class="card"><p class="mut">Tidak ada work order instalasi yang sedang berjalan.</p></div>';return}
-    el.innerHTML=P.map((p,i)=>{const t=p.target||0,n=p.terdaftar||0,pct=t?Math.min(100,Math.round(n*100/t)):0;
+    el.innerHTML=P.map((p,i)=>{const a=angkaProgres(p);
+      let tb="";
+      if(a.R.length){let sr=0,su=0,sp=0;
+        tb='<table style="margin-top:8px"><tr><th>Ruangan</th><th class="n">Rencana</th><th class="n">Uji</th><th class="n">Pasang</th></tr>'+
+          a.R.map(x=>{sr+=x.rencana;su+=x.uji;sp+=x.terpasang;return '<tr><td class="rg">'+esc(x.ruangan)+'<br><small>'+esc(tipePendek(x.tipe))+'</small></td><td class="n">'+x.rencana+'</td><td class="n">'+x.uji+'</td><td class="n">'+x.terpasang+(x.rencana&&x.terpasang>=x.rencana?' ✓':'')+'</td></tr>'}).join("")+
+          '<tr class="sum"><th>Jumlah</th><th class="n">'+sr+'</th><th class="n">'+su+'</th><th class="n">'+sp+'</th></tr></table>'+
+          '<div class="mut" style="margin-top:6px">Uji = sudah lolos uji fungsi untuk ruangan itu. Pasang = sudah diserahkan ke ruangan.'+(a.t>sr?' Rencana RS baru mencakup '+sr+' dari '+a.t+' unit.':'')+(a.lolos>su?' '+(a.lolos-su)+' unit tercatat di ruangan di luar rencana.':'')+'</div>'}
       return '<div class="card"><b>'+esc(p.nomor)+'</b> <span class="mut">'+esc(p.rs)+'</span>'+
-        '<div class="bar"><i style="width:'+pct+'%"></i></div>'+
-        '<div><b>'+n+'</b>'+(t?' dari '+t+' unit terpasang ('+pct+'%)':' unit terpasang')+'</div>'+
-        (p.per_lokasi.length?'<div class="mut">'+p.per_lokasi.map(x=>esc(x.lokasi)+": "+x.n).join(" · ")+'</div>':'')+
+        '<div class="bar"><i style="width:'+a.pct+'%"></i><i class="u" style="width:'+Math.max(a.pctU-a.pct,0)+'%"></i></div>'+
+        '<div><b>'+a.pas+'</b>'+(a.t?' dari '+a.t+' unit terpasang ('+a.pct+'%)':' unit terpasang')+'</div>'+
+        (a.uji?'<div><b>'+a.lolos+'</b> sudah uji fungsi, '+a.uji+' di antaranya belum di ruangan</div>':'')+
+        (tb||(p.per_lokasi.length?'<div class="mut">'+p.per_lokasi.map(x=>esc(x.lokasi)+": "+x.n).join(" · ")+'</div>':''))+
         '<button class="btn s" data-salin="'+i+'">Salin ringkasan untuk WA</button><div class="okb" id="ok'+i+'" hidden></div><pre id="tx'+i+'" hidden></pre></div>'}).join("");
     el.querySelectorAll("[data-salin]").forEach(b=>b.onclick=async()=>{
       const i=b.dataset.salin,tx=teksProgres(P[i]),pre=$("#tx"+i),ok=$("#ok"+i);pre.textContent=tx;pre.hidden=false;ok.hidden=false;
@@ -587,10 +624,11 @@ async function muatCalon(k){
 }
 function gambarCalon(k){
   const q=$("#cari").value.trim().toLowerCase(),el=$("#daftar");
-  const cocok=a=>!q||[a.sn,a.nama,a.merk,a.tipe,a.departemen].some(x=>String(x||"").toLowerCase().includes(q));
+  const qk=kunciSN(q);
+  const cocok=a=>!q||[a.sn,a.nama,a.merk,a.tipe,a.departemen].some(x=>String(x||"").toLowerCase().includes(q))||(qk&&kunciSN(a.sn).includes(qk));
   const adaSN=CAL.filter(a=>a.sn&&cocok(a)), tanpa=CAL.filter(a=>!a.sn&&cocok(a));
   // nomor seri yang persis sama dengan ketikan tampil paling atas
-  adaSN.sort((a,b)=>(String(b.sn).toLowerCase()===q)-(String(a.sn).toLowerCase()===q));
+  adaSN.sort((a,b)=>(kunciSN(b.sn)===qk)-(kunciSN(a.sn)===qk));
   const grup={};tanpa.forEach(a=>{const g=alatTxt(a);(grup[g]=grup[g]||[]).push(a)});
   let h='<p class="mut">'+CAL.length+' alat di RS ini belum berstiker.</p>';
   Object.keys(grup).forEach(g=>{h+='<button class="item" data-id="'+grup[g][0].id+'"><b>'+esc(g)+'</b><span>Tanpa nomor seri, '+grup[g].length+' unit belum berstiker. Nomor seri diisi di langkah berikut.</span></button>'});
@@ -606,7 +644,8 @@ function layarIsi(k,a,ubah){
   judul((ubah?"Ubah ":"Daftarkan ")+k);
   const d={dept:a.departemen||ls.get("pt3d_dept")||"",ruang:a.ruangan||(ubah?"":ls.get("pt3d_ruang")||""),
            menetap:a.menetap!=null?a.menetap:(ls.get("pt3d_menetap")===null?null:ls.get("pt3d_menetap")==="1")};
-  const perluInstal=!ubah&&(a.baru||a.status==="Akan diinstal");
+  const perluInstal=!ubah&&(a.baru||BELUM_PASANG.includes(a.status));
+  let LR=[],izinSN="";
   v.innerHTML='<div class="kode">'+esc(k)+'</div>'+
    (a.baru?'<div class="card"><b>Alat baru di '+esc(rsNama(a.customer_id))+'</b>'+
      '<label for="nm">Nama alat</label><input type="text" id="nm" placeholder="contoh: Patient Monitor">'+
@@ -615,17 +654,25 @@ function layarIsi(k,a,ubah){
     :'<div class="card"><b>'+esc(alatTxt(a))+'</b><div class="mut">'+esc(rsNama(a.customer_id))+' · '+esc(a.status)+'</div></div>')+
    '<label for="sn">Nomor seri (dari label alat)</label><input type="text" id="sn" autocapitalize="characters" autocomplete="off" value="'+esc(a.sn||"")+'">'+
    (a.sn&&!ubah?'<div class="mut">Cocokkan dengan label di alat. Kalau berbeda, berarti alat yang dipilih salah: kembali dan pilih ulang.</div>':'')+
-   '<label for="dp">Departemen</label><input type="text" id="dp" placeholder="contoh: ICU" value="'+esc(d.dept)+'">'+
+   '<label for="dps">Departemen / ruangan</label><select id="dps" hidden></select><input type="text" id="dp" placeholder="contoh: ICU" value="'+esc(d.dept)+'">'+
    '<label>Penempatan</label><div class="chips"><button class="chip'+(d.menetap===true?" on":"")+'" data-m="1">Menetap</button><button class="chip'+(d.menetap===false?" on":"")+'" data-m="0">Mobile</button></div>'+
    '<label for="rg">Ruangan / bed (bila menetap)</label><input type="text" id="rg" placeholder="contoh: ICU Dewasa bed 3" value="'+esc(d.ruang)+'">'+
-   (perluInstal?'<label class="check"><input type="checkbox" id="ins" checked> Tandai terpasang</label><label for="ti">Tanggal instal</label><input type="date" id="ti" value="'+hariIni()+'">':'')+
+   (perluInstal?'<label class="check"><input type="checkbox" id="ins" checked> Tandai terpasang di ruangan</label><label for="ti">Tanggal instal</label><input type="date" id="ti" value="'+hariIni()+'">':'')+
    '<div class="err" id="err"></div><button class="btn" id="simpan">'+(ubah?"Simpan perubahan":"Simpan: "+esc(k)+" untuk alat ini")+'</button>'+
    '<button class="btn s" id="batal">Kembali</button>';
   v.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{d.menetap=b.dataset.m==="1";v.querySelectorAll("[data-m]").forEach(x=>x.classList.toggle("on",x===b))});
   $("#batal").onclick=()=>ubah?layarAlat(a,""):layarDaftar(k);
+  ruanganRS(a.customer_id).then(L=>{const S=$("#dps"),I=$("#dp");if(!S||!I||!L.length)return;LR=L;
+    const kini=samakanDept(a.departemen||d.dept,L),ada=L.includes(kini);
+    if(!ada&&!a.departemen)I.value="";
+    S.innerHTML='<option value="">(pilih ruangan)</option>'+L.map(x=>'<option value="'+esc(x)+'"'+(ada&&x===kini?" selected":"")+'>'+esc(x)+'</option>').join("")+'<option value="__lain"'+(!ada&&I.value?" selected":"")+'>Ruangan lain, ketik sendiri</option>';
+    S.hidden=false;I.hidden=S.value!=="__lain";I.placeholder="ketik nama ruangan";
+    S.onchange=()=>{I.hidden=S.value!=="__lain";if(!I.hidden){I.value="";I.focus()}};
+  });
   $("#simpan").onclick=async()=>{
     const E=$("#err"),B=$("#simpan");E.textContent="";
-    const sn=$("#sn").value.trim(),dept=$("#dp").value.trim(),ruang=$("#rg").value.trim();
+    const S=$("#dps"),pakaiPilih=S&&!S.hidden&&S.value!=="__lain";
+    const sn=$("#sn").value.trim(),dept=pakaiPilih?S.value:samakanDept($("#dp").value,LR),ruang=$("#rg").value.trim();
     const isi={sn:sn||null,departemen:dept||null,ruangan:ruang||null,menetap:d.menetap};
     if(a.baru){isi.nama=$("#nm").value.trim();isi.merk=$("#mk").value.trim()||null;isi.tipe=$("#tp").value.trim()||null;
       if(!isi.nama){E.textContent="Nama alat wajib diisi.";return}
@@ -634,6 +681,13 @@ function layarIsi(k,a,ubah){
     if(d.menetap==null){E.textContent="Pilih penempatan: Menetap atau Mobile.";return}
     if(perluInstal&&$("#ins").checked){const t=$("#ti").value;if(!t){E.textContent="Isi tanggal instal.";return}isi.status="Terpasang";isi.tgl_instal=t}
     B.disabled=true;B.textContent="Menyimpan...";
+    if(sn&&(a.baru||kunciSN(sn)!==kunciSN(a.sn))){
+      const tp=a.baru?isi.tipe:a.tipe,K=await snKembar(a.customer_id,sn,a.baru?null:a.id),sama=K.filter(o=>!bedaTipe(o,tp));
+      const sebut=o=>alatTxt(o)+(o.departemen?" ("+o.departemen+")":"");
+      const batalSimpan=m=>{E.textContent=m;B.disabled=false;B.textContent=ubah?"Simpan perubahan":"Simpan: "+k+" untuk alat ini"};
+      if(sama.length){batalSimpan("Nomor seri "+sama[0].sn+" sudah ada di daftar: "+sebut(sama[0])+". "+(a.baru?"Kembali, lalu pilih alat itu dari daftar.":"Periksa lagi nomor serinya."));return}
+      if(K.length&&izinSN!==kunciSN(sn)){izinSN=kunciSN(sn);batalSimpan("Nomor seri yang sama dipakai alat lain: "+sebut(K[0])+". Kalau ini memang alat yang berbeda, tekan Simpan sekali lagi.");return}
+    }
     try{
       let r;
       if(a.baru){isi.customer_id=a.customer_id;isi.kode_qr=k;if(!isi.status)isi.status="Akan diinstal";
